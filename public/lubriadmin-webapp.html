@@ -1,0 +1,1157 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#eef4fb">
+<title>Lubri-admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet">
+<style>
+  :root{
+    --accent:#0a84ff;
+    --accent-dark:#0060df;
+    --green:#34c759;
+    --amber:#ff9f0a;
+    --red:#ff3b30;
+    --glass-bg:rgba(255,255,255,0.55);
+    --glass-bg-strong:rgba(255,255,255,0.7);
+    --glass-border:rgba(255,255,255,0.75);
+    --text-dark:#1c1c1e;
+    --text-mid:#636366;
+    --radius-lg:26px;
+    --radius-md:18px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0;padding:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,Helvetica,Arial,sans-serif;color:var(--text-dark);}
+  body{
+    min-height:100vh;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(10,132,255,0.25), transparent 45%),
+      radial-gradient(circle at 85% 15%, rgba(255,159,10,0.18), transparent 40%),
+      radial-gradient(circle at 50% 90%, rgba(52,199,89,0.18), transparent 45%),
+      linear-gradient(180deg,#eef4fb,#e7ecf5 60%,#f4f6fa);
+  }
+
+  .material-symbols-rounded{
+    font-family:'Material Symbols Rounded';
+    font-weight:normal;
+    font-style:normal;
+    font-size:24px;
+    line-height:1;
+    letter-spacing:normal;
+    text-transform:none;
+    display:inline-block;
+    white-space:nowrap;
+    word-wrap:normal;
+    direction:ltr;
+    -webkit-font-feature-settings:'liga';
+    -webkit-font-smoothing:antialiased;
+    font-variation-settings:'FILL' 0,'wght' 300,'GRAD' 0,'opsz' 24;
+    vertical-align:middle;
+  }
+
+  .app-shell{display:flex;flex-direction:column;min-height:100vh;}
+  @media(min-width:900px){.app-shell{flex-direction:row;}}
+
+  /* --- Navigation: bottom bar on mobile, sidebar on desktop --- */
+  .app-nav{
+    position:fixed;bottom:0;left:0;right:0;height:78px;z-index:40;
+    display:flex;
+    background:var(--glass-bg-strong);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);
+    border-top:1px solid var(--glass-border);
+    padding-bottom:6px;
+  }
+  .nav-brand{display:none;}
+  .nav-btn{flex:1;border:none;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--text-mid);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;padding:0 2px;}
+  .nav-btn .icon{font-size:20px;}
+  .nav-btn.active{color:var(--accent);}
+
+  @media(min-width:900px){
+    .app-nav{
+      position:sticky;top:0;bottom:auto;left:auto;right:auto;height:100vh;width:250px;flex-shrink:0;
+      flex-direction:column;align-items:stretch;justify-content:flex-start;gap:4px;
+      padding:28px 14px;border-top:none;border-right:1px solid var(--glass-border);
+    }
+    .nav-brand{display:block;font-size:20px;font-weight:800;margin:4px 12px 22px;color:var(--text-dark);}
+    .nav-btn{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;padding:12px 14px;border-radius:14px;font-size:14px;}
+    .nav-btn .icon{font-size:22px;}
+    .nav-btn.active{background:rgba(10,132,255,0.12);}
+  }
+
+  .main-area{flex:1;min-width:0;padding-bottom:94px;}
+  @media(min-width:900px){.main-area{padding-bottom:0;}}
+
+  .topbar{
+    display:flex;align-items:center;padding:14px 20px;position:sticky;top:0;z-index:30;
+    background:var(--glass-bg-strong);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
+    border-bottom:1px solid var(--glass-border);
+  }
+  .topbar-brand{font-size:17px;font-weight:800;}
+  @media(min-width:900px){.topbar{display:none;}}
+
+  .content-inner{max-width:640px;margin:0 auto;padding:20px 16px 40px;width:100%;}
+  @media(min-width:700px){.content-inner{max-width:900px;padding:32px 32px 48px;}}
+  @media(min-width:1200px){.content-inner{max-width:1100px;}}
+
+  .screen{display:none;}
+  .screen.active{display:block; animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  .app-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;gap:12px;}
+  .eyebrow{margin:0;font-size:13px;color:var(--text-mid);}
+  .app-header h1{margin:2px 0 0;font-size:19px;font-weight:700;}
+  .avatar{width:42px;height:42px;flex-shrink:0;margin-top:2px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#5ac8fa);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;box-shadow:0 4px 10px rgba(10,132,255,0.35);}
+
+  .glass-card{
+    background:var(--glass-bg);
+    backdrop-filter:blur(22px) saturate(180%);
+    -webkit-backdrop-filter:blur(22px) saturate(180%);
+    border:1px solid var(--glass-border);
+    border-radius:var(--radius-lg);
+    box-shadow:0 8px 28px rgba(31,38,135,0.14), inset 0 1px 0 rgba(255,255,255,0.6);
+    padding:18px 20px;margin-bottom:14px;
+  }
+  .hero-card{background:linear-gradient(135deg, rgba(10,132,255,0.16), rgba(90,200,250,0.10));}
+  .hero-label{margin:0 0 6px;font-size:13px;font-weight:600;color:var(--accent-dark);}
+  .hero-value{font-size:38px;font-weight:800;line-height:1;}
+  .hero-value span{font-size:18px;font-weight:600;color:var(--text-mid);}
+  .hero-sub{margin:8px 0 16px;font-size:13px;color:var(--text-mid);}
+  .hero-sub strong{color:var(--text-dark);}
+
+  .home-grid{display:flex;flex-direction:column;gap:14px;}
+  .home-grid .glass-card{margin-bottom:0;}
+  @media(min-width:680px){
+    .home-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));align-items:start;gap:16px;}
+  }
+
+  .btn-primary{
+    width:100%;border:none;border-radius:16px;padding:14px 18px;
+    background:linear-gradient(135deg,var(--accent),var(--accent-dark));
+    color:#fff;font-size:15px;font-weight:700;
+    box-shadow:0 8px 18px rgba(10,132,255,0.35);
+    cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  }
+  .btn-primary:active{transform:scale(.98);}
+  .btn-primary:disabled{opacity:.55;}
+  .btn-secondary{
+    flex:1;border:1px solid rgba(0,0,0,0.08);border-radius:14px;padding:12px 10px;
+    background:var(--glass-bg-strong);backdrop-filter:blur(10px);
+    font-size:13px;font-weight:600;color:var(--text-dark);cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  }
+  .btn-secondary:active{transform:scale(.98);}
+
+  .health-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;font-weight:600;font-size:14px;}
+  .health-row > span:first-child{display:inline-flex;align-items:center;gap:6px;}
+  .chip{font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;white-space:nowrap;}
+  .chip-green{background:rgba(52,199,89,0.18);color:#1c7a34;}
+  .chip-amber{background:rgba(255,159,10,0.2);color:#9a5b00;}
+  .chip-red{background:rgba(255,59,48,0.18);color:#a3251d;}
+  .gauge{height:14px;border-radius:8px;overflow:hidden;position:relative;
+    background:linear-gradient(90deg,#34c759 0%,#ffd60a 55%,#ff3b30 100%);}
+  .gauge-marker{position:absolute;top:-3px;width:4px;height:20px;background:#1c1c1e;border-radius:2px;box-shadow:0 0 0 2px #fff;}
+  .hint{margin:8px 0 0;font-size:12px;color:var(--text-mid);}
+  .health-detail{max-height:0;overflow:hidden;transition:max-height .35s ease, margin .35s ease;margin-top:0;}
+  .health-detail.open{max-height:320px;margin-top:12px;}
+  .detail-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;font-size:13px;border-top:1px solid rgba(0,0,0,0.06);}
+  .detail-row:first-child{border-top:none;}
+  .predictive-row{display:flex;gap:10px;margin-top:8px;padding-top:12px;border-top:1px solid rgba(0,0,0,0.06);}
+  .predictive-row > .material-symbols-rounded{color:var(--accent);font-size:22px;margin-top:2px;flex-shrink:0;}
+  .predictive-body{flex:1;}
+  .predictive-label{font-size:13px;font-weight:600;margin-bottom:6px;}
+
+  .streak-preview{display:flex;align-items:center;gap:12px;cursor:pointer;}
+  .streak-preview > .material-symbols-rounded{font-size:28px;color:var(--accent);}
+  .streak-preview strong{font-size:14px;}
+  .streak-preview p{margin:2px 0 0;font-size:12px;color:var(--text-mid);}
+
+  .price-note{display:flex;align-items:center;justify-content:space-between;font-size:13px;color:var(--text-mid);}
+  .price-note > span:first-child{display:inline-flex;align-items:center;gap:6px;}
+  .price-note strong{color:var(--text-dark);font-size:14px;}
+
+  .live-indicator{display:none;align-items:center;gap:6px;justify-content:center;font-size:11px;font-weight:700;color:#1c7a34;background:rgba(52,199,89,0.16);border-radius:20px;padding:5px 12px;width:fit-content;}
+  .live-indicator.show{display:inline-flex;}
+  .live-indicator .material-symbols-rounded{font-size:15px;animation:sensorPulse 1.6s infinite;}
+  .app-header .live-indicator{margin-top:8px;}
+  @keyframes sensorPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+  .screen-title{font-size:20px;font-weight:800;margin:4px 0 4px;}
+  .screen-sub{font-size:13px;color:var(--text-mid);margin:0 0 16px;}
+  .section-title{font-size:15px;font-weight:700;margin:18px 0 10px;}
+
+  /* --- Vinculación OBD-II (Magic Connect) --- */
+  .obd-stage{
+    background:var(--glass-bg);backdrop-filter:blur(20px);border:1px solid var(--glass-border);
+    border-radius:var(--radius-lg);padding:22px 18px;text-align:center;margin-bottom:16px;
+  }
+  .obd-svg{width:100%;max-width:420px;height:auto;margin-bottom:10px;}
+  .dash-body{fill:rgba(28,28,30,0.1);stroke:rgba(28,28,30,0.3);stroke-width:2;}
+  .wheel{fill:none;stroke:rgba(28,28,30,0.35);stroke-width:6;}
+  .wheel-hub{fill:rgba(28,28,30,0.35);}
+  .port-marker{fill:rgba(10,132,255,0.35);stroke:var(--accent);stroke-width:3;transition:fill .3s,stroke .3s;}
+  .port-marker.connected{fill:rgba(52,199,89,0.4);stroke:var(--green);animation:pulse 1.6s infinite;}
+  @keyframes pulse{0%{filter:drop-shadow(0 0 0 rgba(52,199,89,0.6));}70%{filter:drop-shadow(0 0 10px rgba(52,199,89,0));}100%{filter:drop-shadow(0 0 0 rgba(52,199,89,0));}}
+  .port-label{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--text-mid);margin-bottom:18px;}
+  .heartbeat-row{display:flex;flex-direction:column;align-items:center;gap:8px;margin-bottom:14px;}
+  .heartbeat-icon{font-size:36px;color:rgba(255,59,48,0.35);transition:color .3s;}
+  .heartbeat-icon.pulsing{color:var(--red);animation:heartbeat 1.1s ease-in-out infinite;}
+  .heartbeat-icon.live{color:var(--green);animation:heartbeat 1.8s ease-in-out infinite;}
+  @keyframes heartbeat{0%,100%{transform:scale(1);}25%{transform:scale(1.2);}40%{transform:scale(1);}55%{transform:scale(1.14);}}
+  .obd-status{font-size:13px;font-weight:600;color:var(--text-mid);min-height:18px;}
+  .obd-hint{font-size:12px;color:var(--text-mid);text-align:center;margin:-6px 0 16px;}
+
+  .obd-metrics{display:none;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px;}
+  .obd-metrics.show{display:grid;}
+  @media(min-width:680px){.obd-metrics{grid-template-columns:repeat(4,1fr);}}
+  .metric-card{background:var(--glass-bg);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:20px;padding:16px 10px;text-align:center;}
+  .metric-card > .material-symbols-rounded{color:var(--accent);font-size:22px;margin-bottom:6px;}
+  .metric-value{font-size:26px;font-weight:800;}
+  .metric-label{font-size:11px;color:var(--text-mid);font-weight:600;}
+
+  #obdDtcSection{display:none;}
+  #obdDtcSection.show{display:block;}
+  .dtc-section-head{display:flex;align-items:center;gap:8px;margin-bottom:12px;}
+  .dtc-section-head > .material-symbols-rounded{color:var(--accent);}
+  .dtc-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-top:1px solid rgba(0,0,0,0.06);font-size:13px;}
+  .dtc-row:first-child{border-top:none;}
+  .dtc-clean{display:flex;align-items:center;gap:8px;color:#1c7a34;font-size:13px;font-weight:600;background:rgba(52,199,89,0.12);border-radius:12px;padding:10px 12px;}
+
+  .floorplan{
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;
+    background:rgba(255,255,255,0.4);border:2px dashed rgba(10,132,255,0.35);
+    border-radius:20px;padding:14px;margin-bottom:16px;
+  }
+  @media(min-width:680px){.floorplan{grid-template-columns:repeat(4,1fr);}}
+  .drop-zone{
+    height:76px;border-radius:14px;border:2px dashed rgba(0,0,0,0.18);
+    display:flex;align-items:center;justify-content:center;gap:6px;text-align:center;
+    font-size:12px;color:var(--text-mid);font-weight:600;background:rgba(255,255,255,0.4);
+    transition:background .2s, border-color .2s;flex-wrap:wrap;
+  }
+  .drop-zone.zone-hover{border-color:var(--accent);background:rgba(10,132,255,0.12);}
+  .drop-zone.filled{border:2px solid var(--green);background:rgba(52,199,89,0.16);color:#1c7a34;font-size:13px;}
+  .check{margin-left:2px;color:var(--green);}
+  .tray{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
+  .drag-chip{
+    touch-action:none;user-select:none;padding:10px 14px;border-radius:16px;
+    background:var(--glass-bg-strong);border:1px solid var(--glass-border);
+    font-size:13px;font-weight:600;box-shadow:0 4px 10px rgba(0,0,0,0.08);cursor:grab;
+    display:inline-flex;align-items:center;gap:8px;
+  }
+  .drag-chip.placed{visibility:hidden;}
+  .dragging-clone{opacity:0.9;box-shadow:0 10px 20px rgba(0,0,0,0.25);}
+  .progress-row{display:flex;align-items:center;gap:10px;}
+  .progress-track{flex:1;height:10px;border-radius:6px;background:rgba(0,0,0,0.08);overflow:hidden;}
+  .progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),#5ac8fa);transition:width .4s ease;}
+  .progress-row span{font-size:12px;font-weight:700;color:var(--text-mid);white-space:nowrap;}
+
+  /* --- Diagnóstico lenguaje humano --- */
+  .scanner-summary{padding:16px 18px;}
+  .scanner-row{display:flex;justify-content:space-around;text-align:center;}
+  .scanner-stat{display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .scanner-stat strong{font-size:20px;}
+  .scanner-stat span:last-child{font-size:11px;color:var(--text-mid);font-weight:600;}
+
+  .car-explode-wrap{
+    background:var(--glass-bg);backdrop-filter:blur(20px);border:1px solid var(--glass-border);
+    border-radius:var(--radius-lg);padding:16px;margin-bottom:14px;text-align:center;
+  }
+  .car-svg{width:100%;height:auto;max-width:520px;}
+  .car-body{fill:rgba(28,28,30,0.12);stroke:rgba(28,28,30,0.35);stroke-width:2;}
+  .hotspot{stroke-width:2;cursor:pointer;transition:stroke-width .2s;}
+  .hotspot.sev-optimo{fill:rgba(52,199,89,0.35);stroke:#34c759;}
+  .hotspot.sev-atencion{fill:rgba(255,159,10,0.4);stroke:#ff9f0a;}
+  .hotspot.sev-urgente{fill:rgba(255,59,48,0.45);stroke:#ff3b30;animation:pulse 1.6s infinite;}
+  .hotspot.selected{stroke-width:4;}
+  .zone-label{margin-top:10px;font-size:13px;font-weight:600;color:var(--text-mid);min-height:18px;}
+
+  .dtc-detail{display:none;background:var(--glass-bg);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:16px 18px;margin-top:14px;}
+  .dtc-detail.show{display:block;animation:fadeIn .25s ease;}
+  .dtc-header{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+  .dtc-header > .material-symbols-rounded{color:var(--accent);font-size:24px;flex-shrink:0;}
+  .dtc-header > div{flex:1;}
+  .dtc-header strong{display:block;font-size:14px;}
+  .dtc-code{font-size:11px;color:var(--text-mid);font-weight:600;}
+  .dtc-human{margin:0;font-size:13px;color:var(--text-mid);line-height:1.5;}
+
+  /* --- Taller (Héctor): panel técnico + configuración --- */
+  .segmented{display:inline-flex;background:rgba(0,0,0,0.06);border-radius:14px;padding:4px;margin-bottom:18px;gap:2px;}
+  .seg-btn{border:none;background:none;padding:9px 14px;border-radius:10px;font-size:12px;font-weight:700;color:var(--text-mid);display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-family:inherit;}
+  .seg-btn .material-symbols-rounded{font-size:18px;}
+  .seg-btn.active{background:#fff;color:var(--text-dark);box-shadow:0 2px 6px rgba(0,0,0,0.12);}
+  .taller-tab{display:none;}
+  .taller-tab.active{display:block;animation:fadeIn .25s ease;}
+
+  .fault-card{background:var(--glass-bg);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:14px;}
+  .fault-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:12px;}
+  .fault-head p{margin:2px 0 0;font-size:12px;color:var(--text-mid);}
+  .fault-issue{display:flex;gap:10px;background:rgba(255,255,255,0.5);border-radius:14px;padding:10px 12px;margin-bottom:12px;}
+  .fault-issue .material-symbols-rounded{color:var(--accent);flex-shrink:0;}
+  .fault-issue p{margin:2px 0 0;font-size:12px;color:var(--text-mid);}
+  .btn-parts{width:100%;border:none;border-radius:14px;padding:11px 14px;background:rgba(10,132,255,0.12);color:var(--accent-dark);font-weight:700;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:inherit;}
+  .btn-parts:disabled{background:rgba(52,199,89,0.18);color:#1c7a34;opacity:1;cursor:default;}
+
+  /* --- Certificado --- */
+  .cert-card{
+    background:linear-gradient(160deg, rgba(255,255,255,0.85), rgba(255,255,255,0.6));
+    border:1px solid var(--glass-border);border-radius:28px;padding:24px;margin-bottom:16px;
+    box-shadow:0 10px 30px rgba(31,38,135,0.16), inset 0 1px 0 rgba(255,255,255,0.7);
+    position:relative;overflow:hidden;
+  }
+  .cert-card::before{content:"";position:absolute;inset:8px;border:1.5px dashed rgba(10,132,255,0.25);border-radius:22px;pointer-events:none;}
+  .cert-card.falla::before{border-color:rgba(255,59,48,0.3);}
+  .cert-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .cert-icon{font-size:34px;color:var(--accent);transition:color .3s;}
+  .cert-card.falla .cert-icon{color:var(--red);}
+  .cert-card h2{margin:4px 0 6px;font-size:20px;font-weight:800;}
+  .cert-card p{margin:0;font-size:13px;color:var(--text-mid);}
+  .cert-divider{height:1px;background:rgba(0,0,0,0.08);margin:16px 0 12px;}
+  .cert-row{display:flex;justify-content:space-between;font-size:13px;padding:5px 0;color:var(--text-mid);}
+  .cert-row span:last-child{font-weight:700;color:var(--text-dark);}
+
+  .fab{
+    position:fixed;right:20px;bottom:102px;z-index:45;
+    width:56px;height:56px;border-radius:50%;border:none;cursor:pointer;
+    background:#25d366;color:#fff;box-shadow:0 10px 24px rgba(37,211,102,0.45);
+    display:flex;align-items:center;justify-content:center;
+  }
+  .fab .material-symbols-rounded{font-size:28px;}
+  @media(min-width:900px){.fab{bottom:32px;right:32px;}}
+
+  .push-banner{
+    position:fixed;top:14px;left:50%;transform:translate(-50%,-160%);
+    width:min(94vw,420px);background:rgba(28,28,30,0.96);color:#fff;border-radius:18px;
+    padding:14px 16px;display:flex;gap:12px;align-items:flex-start;z-index:210;
+    box-shadow:0 14px 30px rgba(0,0,0,0.35);transition:transform .35s cubic-bezier(.2,1,.3,1);
+  }
+  .push-banner.show{transform:translate(-50%,0);}
+  .push-banner > .material-symbols-rounded{color:var(--red);font-size:24px;margin-top:2px;flex-shrink:0;}
+  .push-body{flex:1;min-width:0;}
+  .push-body strong{font-size:13px;}
+  .push-body p{margin:2px 0 0;font-size:12px;color:rgba(255,255,255,0.7);}
+  .push-actions{display:flex;flex-direction:column;gap:6px;}
+  .push-actions button{border:none;border-radius:10px;padding:7px 10px;font-size:11px;font-weight:700;display:inline-flex;align-items:center;gap:4px;cursor:pointer;white-space:nowrap;font-family:inherit;}
+  .push-actions .material-symbols-rounded{font-size:15px;}
+  .push-actions button:first-child{background:var(--red);color:#fff;}
+  .push-actions button:last-child{background:rgba(255,255,255,0.15);color:#fff;}
+
+  .badge-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px;}
+  @media(min-width:680px){.badge-grid{grid-template-columns:repeat(4,1fr);}}
+  .badge{
+    background:var(--glass-bg);backdrop-filter:blur(16px);border:1px solid var(--glass-border);
+    border-radius:18px;padding:14px;text-align:center;
+  }
+  .badge.locked{opacity:.45;}
+  .badge-icon{font-size:26px;display:block;margin:0 auto 6px;color:var(--accent);}
+  .badge-name{font-size:12px;font-weight:700;display:block;}
+  .badge-share{margin-top:8px;font-size:11px;font-weight:700;color:var(--accent-dark);background:rgba(10,132,255,0.12);border:none;border-radius:10px;padding:6px 10px;cursor:pointer;}
+
+  .history-doc{
+    position:relative;background:#fff;border-radius:16px;padding:16px;box-shadow:0 4px 14px rgba(0,0,0,0.08);
+    font-size:12px;color:var(--text-mid);margin-bottom:14px;overflow:hidden;
+  }
+  .history-doc p{margin:0 0 6px;}
+  .stamp{
+    position:absolute;right:14px;bottom:10px;width:76px;height:76px;border-radius:50%;
+    border:3px solid #d4af37;color:#a3801f;font-size:10px;font-weight:800;line-height:1.1;
+    display:flex;align-items:center;justify-content:center;text-align:center;
+    transform:scale(3) rotate(-15deg);opacity:0;transition:transform .5s cubic-bezier(.2,1.4,.4,1), opacity .3s;
+  }
+  .stamp.stamped{transform:scale(1) rotate(-12deg);opacity:1;}
+
+  .guardian-card{display:flex;align-items:center;gap:14px;}
+  .shield{font-size:34px;color:var(--accent);}
+  .guardian-card strong{font-size:14px;}
+  .guardian-card p{margin:4px 0 0;font-size:12px;color:var(--text-mid);}
+  .guardian-card.broken .shield{filter:grayscale(1) opacity(.6);}
+  .guardian-card.broken strong{color:var(--text-mid);}
+
+  .streak-track{display:flex;gap:8px;margin-bottom:14px;}
+  .streak-dot{flex:1;height:34px;border-radius:10px;background:rgba(0,0,0,0.06);display:flex;align-items:center;justify-content:center;font-size:14px;transition:background .3s;}
+  .streak-dot .material-symbols-rounded{font-size:18px;}
+  .streak-dot.on{background:rgba(52,199,89,0.3);color:#1c7a34;}
+  .streak-dot.missed{background:rgba(255,59,48,0.3);color:#a3251d;}
+
+  .demo-controls{display:flex;gap:10px;margin-bottom:8px;}
+
+  .toast{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:rgba(28,28,30,0.9);color:#fff;padding:10px 18px;border-radius:14px;font-size:12px;font-weight:600;
+    opacity:0;transition:opacity .25s, transform .25s;z-index:200;pointer-events:none;
+    display:flex;align-items:center;gap:8px;
+  }
+  .toast .material-symbols-rounded{font-size:18px;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  @media(max-width:899.98px){.toast{bottom:94px;}}
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <nav class="app-nav">
+    <div class="nav-brand">Lubri-admin</div>
+    <button class="nav-btn active" data-screen="home" onclick="showScreen('home')"><span class="material-symbols-rounded icon">home</span><span>Inicio</span></button>
+    <button class="nav-btn" data-screen="vincular" onclick="showScreen('vincular')"><span class="material-symbols-rounded icon">link</span><span>Vincular</span></button>
+    <button class="nav-btn" data-screen="diagnostico" onclick="showScreen('diagnostico')"><span class="material-symbols-rounded icon">stethoscope</span><span>Diagnóst.</span></button>
+    <button class="nav-btn" data-screen="taller" onclick="showScreen('taller')"><span class="material-symbols-rounded icon">storefront</span><span>Taller</span></button>
+    <button class="nav-btn" data-screen="certificado" onclick="showScreen('certificado')"><span class="material-symbols-rounded icon">workspace_premium</span><span>Certif.</span></button>
+    <button class="nav-btn" data-screen="logros" onclick="showScreen('logros')"><span class="material-symbols-rounded icon">emoji_events</span><span>Logros</span></button>
+  </nav>
+
+  <div class="main-area">
+    <header class="topbar"><span class="topbar-brand">Lubri-admin</span></header>
+
+    <main class="content-inner">
+
+      <section class="screen active" id="screen-home">
+        <div class="app-header">
+          <div>
+            <p class="eyebrow">Hola, Julián</p>
+            <h1>Toyota Corolla '19 · AB123CD</h1>
+            <div class="live-indicator" id="liveIndicatorHome"><span class="material-symbols-rounded">sensors</span>Transmisión en vivo</div>
+          </div>
+          <div class="avatar">JR</div>
+        </div>
+
+        <div class="home-grid">
+          <div class="glass-card hero-card">
+            <p class="hero-label">Kilometraje proyectado por IA</p>
+            <div class="hero-value">9.400 <span>km</span></div>
+            <p class="hero-sub">Estimado para el <strong>2 de agosto</strong> según tu ritmo de uso</p>
+            <button class="btn-primary" onclick="showToast('Turno solicitado para el 2 de agosto','event_available')"><span class="material-symbols-rounded">calendar_month</span>Agendar turno</button>
+          </div>
+
+          <div class="glass-card health-card" onclick="toggleHealth()">
+            <div class="health-row">
+              <span><span class="material-symbols-rounded">thermostat</span>Salud del motor</span>
+              <span class="chip chip-green">Buena</span>
+            </div>
+            <div class="gauge"><div class="gauge-marker" style="left:64%"></div></div>
+            <p class="hint">Tocá para ver el detalle</p>
+            <div class="health-detail" id="healthDetail">
+              <div class="detail-row"><span>Aceite</span><span class="chip chip-green">OK</span></div>
+              <div class="detail-row"><span>Filtro de aire</span><span class="chip chip-amber">Pronto</span></div>
+              <div class="detail-row"><span>Frenos</span><span class="chip chip-green">OK</span></div>
+              <div class="detail-row"><span>Neumáticos</span><span class="chip chip-amber">Rotar</span></div>
+              <div class="predictive-row">
+                <span class="material-symbols-rounded">oil_barrel</span>
+                <div class="predictive-body">
+                  <div class="predictive-label">Desgaste real de aceite</div>
+                  <div class="progress-track"><div class="progress-fill" style="width:62%"></div></div>
+                  <p class="hint">62% de vida útil consumida — según la severidad de tu conducción, no solo los km</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card streak-preview" onclick="showScreen('logros')">
+            <span class="material-symbols-rounded">local_fire_department</span>
+            <div><strong>Racha de 4 services</strong><p>Sos Guardián del Motor — tocá para ver tus logros</p></div>
+          </div>
+
+          <div class="glass-card price-note">
+            <span><span class="material-symbols-rounded">home_repair_service</span>Valor hora técnica</span>
+            <strong>$84.000 + IVA</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="screen-vincular">
+        <h1 class="screen-title">Vinculación Magic Connect</h1>
+        <p class="screen-sub">Conectá el dongle ELM327 (OBD-II) por Bluetooth o USB para monitorear tu Corolla en vivo</p>
+
+        <div class="glass-card" id="serialUnsupported" style="display:none;">
+          <div class="dtc-section-head"><span class="material-symbols-rounded">error</span><strong>Web Serial no disponible</strong></div>
+          <p class="hint">Este navegador no soporta la Web Serial API. Abrí esta página en Chrome, Edge u Opera (escritorio o Android) para vincular el dongle. Además, la página debe servirse por <strong>https://</strong> o <strong>http://localhost</strong> — no funciona abierta como archivo local.</p>
+        </div>
+
+        <div class="obd-stage">
+          <svg viewBox="0 0 320 170" class="obd-svg">
+            <rect x="10" y="70" width="300" height="80" rx="18" class="dash-body"/>
+            <circle cx="90" cy="60" r="34" class="wheel"/>
+            <circle cx="90" cy="60" r="10" class="wheel-hub"/>
+            <circle cx="230" cy="110" r="16" class="port-marker" id="portMarker"/>
+          </svg>
+          <div class="port-label"><span class="material-symbols-rounded">usb</span>Puerto OBD-II — bajo el volante</div>
+
+          <div class="heartbeat-row">
+            <span class="material-symbols-rounded heartbeat-icon" id="obdHeart">monitor_heart</span>
+            <p class="obd-status" id="obdStatus">Listo para vincular</p>
+          </div>
+
+          <div class="live-indicator" id="liveIndicatorVincular"><span class="material-symbols-rounded">sensors</span>Transmisión en vivo</div>
+        </div>
+
+        <button class="btn-primary" id="obdBtn" onclick="connectOBD()"><span class="material-symbols-rounded">bolt</span><span>Conectar dongle</span></button>
+        <p class="obd-hint">Se te va a pedir que elijas el puerto serie del ELM327 en un diálogo del navegador</p>
+
+        <div class="obd-metrics" id="obdMetrics">
+          <div class="metric-card"><span class="material-symbols-rounded">speed</span><div class="metric-value" id="valRPM">--</div><span class="metric-label">RPM motor</span></div>
+          <div class="metric-card"><span class="material-symbols-rounded">directions_car</span><div class="metric-value" id="valSpeed">--</div><span class="metric-label">km/h</span></div>
+          <div class="metric-card"><span class="material-symbols-rounded">device_thermostat</span><div class="metric-value" id="valCoolant">--</div><span class="metric-label">°C refrigerante</span></div>
+          <div class="metric-card"><span class="material-symbols-rounded">bolt</span><div class="metric-value" id="valLoad">--</div><span class="metric-label">% carga motor</span></div>
+        </div>
+
+        <div class="glass-card" id="obdDtcSection">
+          <div class="dtc-section-head"><span class="material-symbols-rounded">troubleshoot</span><strong>Diagnóstico de fallas (DTC)</strong></div>
+          <div class="demo-controls">
+            <button class="btn-secondary" onclick="scanDTC()"><span class="material-symbols-rounded">manage_search</span>Escanear fallas</button>
+            <button class="btn-secondary" onclick="clearDTC()"><span class="material-symbols-rounded">delete_sweep</span>Borrar DTCs</button>
+          </div>
+          <div id="dtcResults"><p class="hint">Tocá "Escanear fallas" para consultar la ECU real (modo 03).</p></div>
+        </div>
+      </section>
+
+      <section class="screen" id="screen-diagnostico">
+        <h1 class="screen-title">Diagnóstico en lenguaje humano</h1>
+        <p class="screen-sub">Nivel 1: resumen del escáner · Nivel 2: tocá una zona para el detalle técnico</p>
+
+        <div class="glass-card scanner-summary">
+          <div class="scanner-row">
+            <div class="scanner-stat"><span class="material-symbols-rounded" style="color:var(--green)">check_circle</span><strong id="countOptimo">0</strong><span>Óptimo</span></div>
+            <div class="scanner-stat"><span class="material-symbols-rounded" style="color:var(--amber)">warning</span><strong id="countAtencion">0</strong><span>Atención</span></div>
+            <div class="scanner-stat"><span class="material-symbols-rounded" style="color:var(--red)">error</span><strong id="countUrgente">0</strong><span>Urgente</span></div>
+          </div>
+        </div>
+
+        <div class="car-explode-wrap">
+          <svg viewBox="0 0 320 150" class="car-svg">
+            <path class="car-body" d="M15,110 C15,90 35,80 55,78 L90,55 C100,48 200,48 215,55 L255,78 C280,80 300,92 300,110 L300,118 L15,118 Z"/>
+            <circle class="hotspot" data-zone="motor" cx="95" cy="82" r="26"></circle>
+            <circle class="hotspot" data-zone="frenos-d" cx="75" cy="118" r="15"></circle>
+            <circle class="hotspot" data-zone="frenos-t" cx="245" cy="118" r="15"></circle>
+            <circle class="hotspot" data-zone="luces" cx="295" cy="90" r="13"></circle>
+          </svg>
+          <p class="zone-label">Tocá una zona para ver el detalle</p>
+        </div>
+
+        <div class="dtc-detail" id="zoneDetail"></div>
+      </section>
+
+      <section class="screen" id="screen-taller">
+        <h1 class="screen-title">Panel de Héctor</h1>
+        <p class="screen-sub">Gestioná el taller y los diagnósticos que llegan de tus clientes</p>
+
+        <div class="segmented">
+          <button class="seg-btn active" data-tab="panel" onclick="showTallerTab('panel')"><span class="material-symbols-rounded">dashboard</span>Panel técnico</button>
+          <button class="seg-btn" data-tab="config" onclick="showTallerTab('config')"><span class="material-symbols-rounded">build</span>Configuración</button>
+        </div>
+
+        <div class="taller-tab active" id="tallerTab-panel">
+          <div class="fault-card">
+            <div class="fault-head">
+              <div><strong>Toyota Corolla '19 · AB123CD</strong><p>Julián R. — llega hoy 17:30</p></div>
+              <span class="chip chip-red">Urgente</span>
+            </div>
+            <div class="fault-issue">
+              <span class="material-symbols-rounded">troubleshoot</span>
+              <div><strong>Motor · DTC P0300</strong><p>Pequeña falla en las bujías: el motor gasta un 5% más de combustible</p></div>
+            </div>
+            <button class="btn-parts" onclick="prepararRepuestos(this,'Juego de bujías NGK')"><span class="material-symbols-rounded">inventory_2</span>Preparar repuestos</button>
+          </div>
+
+          <div class="fault-card">
+            <div class="fault-head">
+              <div><strong>VW Gol Trend '21 · KL456MN</strong><p>Marina S. — llega mañana 09:00</p></div>
+              <span class="chip chip-amber">Atención</span>
+            </div>
+            <div class="fault-issue">
+              <span class="material-symbols-rounded">troubleshoot</span>
+              <div><strong>Freno delantero · DTC C1235</strong><p>Pastillas con desgaste avanzado — quedan ~1.500 km</p></div>
+            </div>
+            <button class="btn-parts" onclick="prepararRepuestos(this,'Pastillas de freno delanteras')"><span class="material-symbols-rounded">inventory_2</span>Preparar repuestos</button>
+          </div>
+        </div>
+
+        <div class="taller-tab" id="tallerTab-config">
+          <p class="screen-sub">Arrastrá cada equipo a su lugar en el local de Héctor</p>
+          <div class="floorplan" id="floorplan">
+            <div class="drop-zone" data-zone="fosa">Fosa</div>
+            <div class="drop-zone" data-zone="alineadora">Alineadora</div>
+            <div class="drop-zone" data-zone="elevador">Elevador</div>
+            <div class="drop-zone" data-zone="herramientas">Herramientas</div>
+          </div>
+
+          <div class="tray" id="tray">
+            <div class="drag-chip" data-zone="fosa"><span class="material-symbols-rounded">vertical_align_bottom</span><span class="chip-label">Fosa</span></div>
+            <div class="drag-chip" data-zone="alineadora"><span class="material-symbols-rounded">tire_repair</span><span class="chip-label">Alineadora</span></div>
+            <div class="drag-chip" data-zone="elevador"><span class="material-symbols-rounded">directions_car</span><span class="chip-label">Elevador</span></div>
+            <div class="drag-chip" data-zone="herramientas"><span class="material-symbols-rounded">handyman</span><span class="chip-label">Herramientas</span></div>
+          </div>
+
+          <div class="progress-row">
+            <div class="progress-track"><div class="progress-fill" id="onboardProgress" style="width:0%"></div></div>
+            <span id="onboardProgressLabel">0/4 configurado</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="screen" id="screen-certificado">
+        <h1 class="screen-title">Certificado de Bienestar Vehicular</h1>
+        <p class="screen-sub">Tu informe de salud, listo para compartir</p>
+
+        <div class="cert-card" id="certCard">
+          <div class="cert-top">
+            <span class="material-symbols-rounded cert-icon" id="certIcon">workspace_premium</span>
+            <span class="chip chip-green" id="certStatusChip">Óptimo</span>
+          </div>
+          <h2 id="certTitle">Guardián del Motor</h2>
+          <p id="certSub">Toyota Corolla '19 · AB123CD — sin fallas detectadas en el último escaneo</p>
+          <div class="cert-divider"></div>
+          <div class="cert-row"><span>Emitido</span><span>24/07/2026</span></div>
+          <div class="cert-row"><span>Kilometraje</span><span>84.200 km</span></div>
+          <div class="cert-row"><span>Próxima revisión</span><span>2 de agosto</span></div>
+        </div>
+
+        <div class="demo-controls">
+          <button class="btn-secondary" onclick="setCertState('limpio')"><span class="material-symbols-rounded">check_circle</span>Diagnóstico limpio</button>
+          <button class="btn-secondary" onclick="setCertState('falla')"><span class="material-symbols-rounded">warning</span>Simular falla</button>
+        </div>
+
+        <button class="btn-primary" onclick="showToast('Informe enviado por WhatsApp','chat')"><span class="material-symbols-rounded">chat</span>Enviar informe completo</button>
+
+        <button class="fab" onclick="showToast('Informe enviado por WhatsApp','chat')" aria-label="Enviar informe completo">
+          <span class="material-symbols-rounded">chat</span>
+        </button>
+      </section>
+
+      <section class="screen" id="screen-logros">
+        <h1 class="screen-title">Tus logros</h1>
+
+        <div class="glass-card guardian-card" id="guardianCard">
+          <span class="shield material-symbols-rounded" id="shieldIcon">shield</span>
+          <div>
+            <strong id="guardianTitle">Guardián del Motor</strong>
+            <p id="guardianSub">Escudo Anti-Inflación activo — precio congelado en tu próximo service</p>
+          </div>
+        </div>
+
+        <div class="streak-track" id="streakTrack"></div>
+
+        <div class="demo-controls">
+          <button class="btn-secondary" onclick="markService(true)"><span class="material-symbols-rounded">check_circle</span>Service a tiempo</button>
+          <button class="btn-secondary" onclick="markService(false)"><span class="material-symbols-rounded">warning</span>Simular falla</button>
+        </div>
+
+        <h2 class="section-title">Insignias</h2>
+        <div class="badge-grid">
+          <div class="badge earned">
+            <span class="badge-icon material-symbols-rounded">timer</span>
+            <span class="badge-name">Reloj Suizo</span>
+            <button class="badge-share" onclick="shareBadge('Reloj Suizo')">Compartir</button>
+          </div>
+          <div class="badge earned">
+            <span class="badge-icon material-symbols-rounded">star</span>
+            <span class="badge-name">Primer service</span>
+          </div>
+          <div class="badge locked">
+            <span class="badge-icon material-symbols-rounded">military_tech</span>
+            <span class="badge-name">1 año sin fallas</span>
+          </div>
+          <div class="badge locked">
+            <span class="badge-icon material-symbols-rounded">diamond</span>
+            <span class="badge-name">Cliente VIP</span>
+          </div>
+        </div>
+
+        <h2 class="section-title">Historial</h2>
+        <div class="history-doc">
+          <p>15/03/2026 — Cambio de aceite y filtro</p>
+          <p>02/06/2026 — Rotación de neumáticos</p>
+          <p>20/07/2026 — Revisión de frenos</p>
+          <div class="stamp" id="stamp">SELLO<br>CALIDAD</div>
+        </div>
+        <button class="btn-primary" onclick="stampSeal()"><span class="material-symbols-rounded">flag</span>Finalizar service y sellar historial</button>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div class="push-banner" id="pushBanner">
+  <span class="material-symbols-rounded">notifications_active</span>
+  <div class="push-body">
+    <strong>Anomalía crítica detectada</strong>
+    <p>Freno trasero con disco deformado — se notificó a Héctor</p>
+  </div>
+  <div class="push-actions">
+    <button onclick="closePush()"><span class="material-symbols-rounded">sos</span>Emergencia</button>
+    <button onclick="closePush(); showScreen('home'); showToast('Turno agendado','event_available')"><span class="material-symbols-rounded">calendar_month</span>Agendar</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function showScreen(name){
+    document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+    document.getElementById('screen-'+name).classList.add('active');
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.screen===name));
+    window.scrollTo(0,0);
+  }
+
+  function toggleHealth(){
+    document.getElementById('healthDetail').classList.toggle('open');
+  }
+
+  let toastTimer;
+  function showToast(msg, icon){
+    const t = document.getElementById('toast');
+    t.innerHTML = '<span class="material-symbols-rounded"></span><span class="toast-msg"></span>';
+    t.querySelector('.material-symbols-rounded').textContent = icon || 'check_circle';
+    t.querySelector('.toast-msg').textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(()=>t.classList.remove('show'), 2200);
+  }
+
+  // --- Vinculación OBD-II real (Web Serial API + ELM327) ---
+  let vinculado = false;
+  let obdConnecting = false;
+  let obdConnected = false;
+  let obdPort = null, obdReader = null, obdWriter = null;
+  let obdPolling = false;
+  let obdConsecutiveErrors = 0;
+  const OBD_MAX_CONSECUTIVE_ERRORS = 3;
+  const OBD_MAX_RESPONSE_LEN = 4096;
+
+  function updateLiveIndicators(){
+    document.querySelectorAll('.live-indicator').forEach(el=>el.classList.toggle('show', vinculado));
+  }
+
+  function checkSerialSupport(){
+    if(!('serial' in navigator)){
+      const notice = document.getElementById('serialUnsupported');
+      if(notice) notice.style.display = 'block';
+      const btn = document.getElementById('obdBtn');
+      btn.disabled = true;
+      btn.querySelector('span:last-child').textContent = 'No disponible en este navegador';
+    } else {
+      navigator.serial.addEventListener('disconnect', ()=>{
+        if(obdConnected){ showToast('El dispositivo se desconectó','error'); disconnectOBD(); }
+      });
+    }
+  }
+
+  async function sendOBDCommand(cmd, timeoutMs){
+    timeoutMs = timeoutMs || 2000;
+    await obdWriter.write(cmd + '\r');
+    let response = '';
+    let timedOut = false;
+    let timer;
+    const timeoutPromise = new Promise(resolve=>{
+      timer = setTimeout(()=>{ timedOut = true; resolve(null); }, timeoutMs);
+    });
+    try{
+      while(!timedOut){
+        const result = await Promise.race([obdReader.read(), timeoutPromise]);
+        if(!result) break; // timed out waiting for the device
+        const { value, done } = result;
+        if(done) break;
+        if(value){
+          response += value;
+          if(response.length > OBD_MAX_RESPONSE_LEN){
+            response = response.slice(0, OBD_MAX_RESPONSE_LEN);
+            break;
+          }
+        }
+        if(response.includes('>')) break;
+      }
+    } finally {
+      clearTimeout(timer);
+    }
+    return response.replace(/>/g,'').trim();
+  }
+
+  async function connectOBD(){
+    if(!('serial' in navigator)){
+      showToast('Tu navegador no soporta Web Serial API','error');
+      return;
+    }
+    if(obdConnected || obdConnecting) return;
+    obdConnecting = true;
+    const btn = document.getElementById('obdBtn');
+    const status = document.getElementById('obdStatus');
+    const heart = document.getElementById('obdHeart');
+    const portEl = document.getElementById('portMarker');
+    btn.disabled = true;
+    status.textContent = 'Seleccioná el dispositivo...';
+    try{
+      obdPort = await navigator.serial.requestPort();
+      await obdPort.open({ baudRate: 38400 });
+
+      const textDecoder = new TextDecoderStream();
+      obdPort.readable.pipeTo(textDecoder.writable).catch(()=>{});
+      obdReader = textDecoder.readable.getReader();
+
+      const textEncoder = new TextEncoderStream();
+      textEncoder.readable.pipeTo(obdPort.writable);
+      obdWriter = textEncoder.writable.getWriter();
+
+      heart.classList.add('pulsing');
+      status.textContent = 'Inicializando ELM327...';
+
+      await sendOBDCommand('AT Z', 3000);
+      await sendOBDCommand('AT E0');
+      await sendOBDCommand('AT L0');
+      await sendOBDCommand('AT S0');
+      await sendOBDCommand('AT H0');
+      await sendOBDCommand('AT SP 0');
+
+      obdConnected = true;
+      obdConnecting = false;
+      obdConsecutiveErrors = 0;
+      vinculado = true;
+      portEl.classList.add('connected');
+      heart.classList.remove('pulsing');
+      heart.classList.add('live');
+      status.textContent = 'Vinculado — transmisión en vivo activa';
+      btn.disabled = false;
+      btn.querySelector('.material-symbols-rounded').textContent = 'link_off';
+      btn.querySelector('span:last-child').textContent = 'Desconectar';
+      btn.onclick = disconnectOBD;
+      updateLiveIndicators();
+      document.getElementById('obdMetrics').classList.add('show');
+      document.getElementById('obdDtcSection').classList.add('show');
+      showToast('ELM327 conectado — leyendo datos en vivo','bolt');
+      startPolling();
+    } catch(e){
+      obdConnecting = false;
+      btn.disabled = false;
+      heart.classList.remove('pulsing');
+      if(e.name === 'NotFoundError'){
+        status.textContent = 'Listo para vincular';
+      } else {
+        status.textContent = 'No se pudo conectar';
+        showToast('Error de conexión: '+e.message,'error');
+      }
+    }
+  }
+
+  async function disconnectOBD(){
+    stopPolling();
+    try{ if(obdReader){ await obdReader.cancel().catch(()=>{}); obdReader.releaseLock(); } }catch(e){}
+    try{ if(obdWriter){ await obdWriter.close().catch(()=>{}); } }catch(e){}
+    try{ if(obdPort){ await obdPort.close().catch(()=>{}); } }catch(e){}
+    obdReader = null; obdWriter = null; obdPort = null;
+    obdConnected = false; vinculado = false;
+    document.getElementById('portMarker').classList.remove('connected');
+    const heart = document.getElementById('obdHeart');
+    heart.classList.remove('live','pulsing');
+    document.getElementById('obdStatus').textContent = 'Listo para vincular';
+    const btn = document.getElementById('obdBtn');
+    btn.querySelector('.material-symbols-rounded').textContent = 'bolt';
+    btn.querySelector('span:last-child').textContent = 'Conectar dongle';
+    btn.onclick = connectOBD;
+    btn.disabled = false;
+    updateLiveIndicators();
+    document.getElementById('obdMetrics').classList.remove('show');
+    document.getElementById('obdDtcSection').classList.remove('show');
+    ['valRPM','valSpeed','valCoolant','valLoad'].forEach(id=>setMetric(id,'--'));
+    showToast('Dongle desconectado','link_off');
+  }
+
+  // --- Lectura de PIDs en vivo (Mode 01) ---
+  function parsePIDHex(raw, pid){
+    const hex = raw.replace(/\s+/g,'').toUpperCase();
+    const marker = '41'+pid;
+    const idx = hex.indexOf(marker);
+    if(idx === -1) return null;
+    return hex.substring(idx+4);
+  }
+  function setMetric(id, value){
+    const el = document.getElementById(id);
+    if(el) el.textContent = value;
+  }
+  async function pollOnce(){
+    let gotAny = false;
+    try{
+      const rpmHex = parsePIDHex(await sendOBDCommand('01 0C'), '0C');
+      if(rpmHex && rpmHex.length>=4){
+        gotAny = true;
+        const A = parseInt(rpmHex.substring(0,2),16), B = parseInt(rpmHex.substring(2,4),16);
+        setMetric('valRPM', Math.round(((A*256)+B)/4));
+      }
+      const speedHex = parsePIDHex(await sendOBDCommand('01 0D'), '0D');
+      if(speedHex && speedHex.length>=2){
+        gotAny = true;
+        setMetric('valSpeed', parseInt(speedHex.substring(0,2),16));
+      }
+      const coolantHex = parsePIDHex(await sendOBDCommand('01 05'), '05');
+      if(coolantHex && coolantHex.length>=2){
+        gotAny = true;
+        setMetric('valCoolant', parseInt(coolantHex.substring(0,2),16)-40);
+      }
+      const loadHex = parsePIDHex(await sendOBDCommand('01 04'), '04');
+      if(loadHex && loadHex.length>=2){
+        gotAny = true;
+        setMetric('valLoad', Math.round(parseInt(loadHex.substring(0,2),16)*100/255));
+      }
+      obdConsecutiveErrors = gotAny ? 0 : obdConsecutiveErrors + 1;
+    } catch(e){
+      console.error('OBD poll error', e);
+      obdConsecutiveErrors++;
+    }
+    if(obdConsecutiveErrors >= OBD_MAX_CONSECUTIVE_ERRORS){
+      showToast('Se perdió la comunicación con el dongle','error');
+      disconnectOBD();
+    }
+  }
+  async function pollLoop(){
+    while(obdPolling && obdConnected){
+      await pollOnce();
+      await new Promise(r=>setTimeout(r, 1000));
+    }
+  }
+  function startPolling(){
+    if(obdPolling) return;
+    obdPolling = true;
+    pollLoop();
+  }
+  function stopPolling(){
+    obdPolling = false;
+  }
+
+  // --- Diagnóstico de fallas real (Mode 03 / 04) ---
+  function decodeDTC(bA, bB){
+    const types = ['P','C','B','U'];
+    const prefix = types[(bA & 0xC0) >> 6];
+    const d1 = (bA & 0x30) >> 4;
+    const d2 = (bA & 0x0F).toString(16).toUpperCase();
+    const d34 = bB.toString(16).padStart(2,'0').toUpperCase();
+    return prefix + d1 + d2 + d34;
+  }
+  async function scanDTC(){
+    if(!obdConnected) return showToast('Conectá el dongle primero','link');
+    const resultsDiv = document.getElementById('dtcResults');
+    resultsDiv.innerHTML = '<p class="hint">Escaneando ECU...</p>';
+    const res = await sendOBDCommand('03');
+    const cleanHex = res.replace(/[^0-9A-Fa-f]/g,'').toUpperCase();
+    const headerIdx = cleanHex.indexOf('43');
+    if(headerIdx === -1){
+      resultsDiv.innerHTML = '<div class="dtc-clean"><span class="material-symbols-rounded">check_circle</span>No hay códigos de falla almacenados</div>';
+      return;
+    }
+    const dataStr = cleanHex.substring(headerIdx+2);
+    let html = '', count = 0;
+    for(let i=0;i<dataStr.length-3;i+=4){
+      const bA = parseInt(dataStr.substring(i,i+2),16);
+      const bB = parseInt(dataStr.substring(i+2,i+4),16);
+      if(bA===0 && bB===0) continue;
+      html += '<div class="dtc-row"><span class="chip chip-red">'+decodeDTC(bA,bB)+'</span><span>Código de falla detectado por la ECU</span></div>';
+      count++;
+    }
+    resultsDiv.innerHTML = html || '<div class="dtc-clean"><span class="material-symbols-rounded">check_circle</span>ECU limpia, sin fallas</div>';
+    if(count>0) showToast(count+' código(s) de falla detectado(s)','error');
+  }
+  async function clearDTC(){
+    if(!obdConnected) return showToast('Conectá el dongle primero','link');
+    if(!confirm('¿Confirmás borrar las fallas y apagar la luz Check Engine?')) return;
+    await sendOBDCommand('04');
+    document.getElementById('dtcResults').innerHTML = '<div class="dtc-clean"><span class="material-symbols-rounded">check_circle</span>Códigos borrados correctamente</div>';
+    showToast('Fallas borradas — ECU reseteada','check_circle');
+  }
+
+  // --- Onboarding drag mini-game (pointer events, mouse + touch) ---
+  let dragChip=null, dragClone=null, offX=0, offY=0;
+  function onboardZonesFilled(){
+    return document.querySelectorAll('.drop-zone.filled').length;
+  }
+  function updateOnboardProgress(){
+    const n = onboardZonesFilled();
+    document.getElementById('onboardProgress').style.width = (n/4*100)+'%';
+    document.getElementById('onboardProgressLabel').textContent = n+'/4 configurado';
+    if(n===4) showToast('¡Taller configurado!','celebration');
+  }
+  document.querySelectorAll('.drag-chip').forEach(chip=>{
+    chip.style.touchAction='none';
+    chip.addEventListener('pointerdown', e=>{
+      if(chip.classList.contains('placed')) return;
+      dragChip = chip;
+      const r = chip.getBoundingClientRect();
+      dragClone = chip.cloneNode(true);
+      dragClone.classList.add('dragging-clone');
+      dragClone.style.position='fixed';
+      dragClone.style.left = r.left+'px';
+      dragClone.style.top = r.top+'px';
+      dragClone.style.width = r.width+'px';
+      dragClone.style.zIndex = 9999;
+      dragClone.style.pointerEvents='none';
+      document.body.appendChild(dragClone);
+      offX = e.clientX - r.left;
+      offY = e.clientY - r.top;
+      chip.style.opacity='0.25';
+      try{ chip.setPointerCapture(e.pointerId); }catch(err){}
+    });
+    chip.addEventListener('pointermove', e=>{
+      if(!dragClone) return;
+      dragClone.style.left = (e.clientX-offX)+'px';
+      dragClone.style.top = (e.clientY-offY)+'px';
+      document.querySelectorAll('.drop-zone').forEach(z=>{
+        const r = z.getBoundingClientRect();
+        const over = e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom;
+        z.classList.toggle('zone-hover', over && !z.classList.contains('filled'));
+      });
+    });
+    chip.addEventListener('pointerup', e=>{
+      if(!dragClone) return;
+      let dropped=false;
+      document.querySelectorAll('.drop-zone').forEach(z=>{
+        const r = z.getBoundingClientRect();
+        const over = e.clientX>=r.left && e.clientX<=r.right && e.clientY>=r.top && e.clientY<=r.bottom;
+        z.classList.remove('zone-hover');
+        if(over && !z.classList.contains('filled') && z.dataset.zone===chip.dataset.zone){
+          z.classList.add('filled');
+          const iconName = chip.querySelector('.material-symbols-rounded').textContent;
+          const label = chip.querySelector('.chip-label').textContent;
+          z.innerHTML = '<span class="material-symbols-rounded">'+iconName+'</span><span class="chip-label">'+label+'</span><span class="material-symbols-rounded check">check</span>';
+          chip.classList.add('placed');
+          dropped = true;
+          updateOnboardProgress();
+        }
+      });
+      dragClone.remove(); dragClone=null;
+      if(!dropped) chip.style.opacity='1';
+      dragChip=null;
+    });
+  });
+
+  // --- Diagnóstico en lenguaje humano ---
+  const zoneInfo = {
+    'motor':{label:'Motor', severity:'urgente', dtc:'P0300', human:'Pequeña falla en las bujías: tu motor gasta un 5% más de combustible'},
+    'frenos-d':{label:'Freno delantero', severity:'atencion', dtc:'C1235', human:'Te quedan unos 1.500 km de pastilla — conviene cambiarlas en el próximo service'},
+    'frenos-t':{label:'Freno trasero', severity:'optimo', dtc:'C1245', human:'Disco y pastillas dentro de los parámetros normales'},
+    'luces':{label:'Luces', severity:'atencion', dtc:'B1000', human:'Un foco trasero está fallando de forma intermitente'}
+  };
+  function sevLabel(s){ return s==='urgente'?'Urgente':(s==='atencion'?'Atención':'Óptimo'); }
+  function sevChipClass(s){ return s==='urgente'?'chip-red':(s==='atencion'?'chip-amber':'chip-green'); }
+
+  function paintHotspots(){
+    document.querySelectorAll('.hotspot').forEach(h=>{
+      const info = zoneInfo[h.dataset.zone];
+      h.classList.add('sev-'+info.severity);
+    });
+  }
+  function renderHealthScanner(){
+    const counts = {optimo:0, atencion:0, urgente:0};
+    Object.values(zoneInfo).forEach(z=>counts[z.severity]++);
+    document.getElementById('countOptimo').textContent = counts.optimo;
+    document.getElementById('countAtencion').textContent = counts.atencion;
+    document.getElementById('countUrgente').textContent = counts.urgente;
+  }
+  let selectedZone = null;
+  function selectZone(zone){
+    selectedZone = zone;
+    document.querySelectorAll('.hotspot').forEach(h=>h.classList.toggle('selected', h.dataset.zone===zone));
+    renderZoneDetail();
+  }
+  function renderZoneDetail(){
+    const wrap = document.getElementById('zoneDetail');
+    if(!selectedZone){ wrap.classList.remove('show'); wrap.innerHTML=''; return; }
+    const info = zoneInfo[selectedZone];
+    wrap.classList.add('show');
+    wrap.innerHTML =
+      '<div class="dtc-header">'+
+        '<span class="material-symbols-rounded">troubleshoot</span>'+
+        '<div><strong>'+info.label+'</strong><span class="dtc-code">DTC '+info.dtc+'</span></div>'+
+        '<span class="chip '+sevChipClass(info.severity)+'">'+sevLabel(info.severity)+'</span>'+
+      '</div>'+
+      '<p class="dtc-human">'+info.human+'</p>';
+  }
+  document.querySelectorAll('.hotspot').forEach(spot=>{
+    spot.addEventListener('click', ()=> selectZone(spot.dataset.zone));
+  });
+
+  // --- Taller (Héctor): tabs ---
+  function showTallerTab(tab){
+    document.querySelectorAll('.seg-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+    document.querySelectorAll('.taller-tab').forEach(t=>t.classList.remove('active'));
+    document.getElementById('tallerTab-'+tab).classList.add('active');
+  }
+  function prepararRepuestos(btn, part){
+    btn.disabled = true;
+    btn.innerHTML = '<span class="material-symbols-rounded">check_circle</span>'+part+' reservado';
+    showToast('Repuesto reservado: '+part,'inventory_2');
+  }
+
+  // --- Certificado de Bienestar Vehicular ---
+  function setCertState(state){
+    const card = document.getElementById('certCard');
+    const icon = document.getElementById('certIcon');
+    const chip = document.getElementById('certStatusChip');
+    const title = document.getElementById('certTitle');
+    const sub = document.getElementById('certSub');
+    if(state==='limpio'){
+      card.classList.remove('falla');
+      icon.textContent = 'workspace_premium';
+      chip.className = 'chip chip-green'; chip.textContent = 'Óptimo';
+      title.textContent = 'Guardián del Motor';
+      sub.textContent = "Toyota Corolla '19 · AB123CD — sin fallas detectadas en el último escaneo";
+      closePush();
+    } else {
+      card.classList.add('falla');
+      icon.textContent = 'gpp_good';
+      chip.className = 'chip chip-red'; chip.textContent = 'Urgente';
+      title.textContent = 'Escudo Anti-Falla activado';
+      sub.textContent = 'Se detectó una falla urgente — agendá el service y conservás el descuento express';
+      showPush();
+    }
+  }
+  function showPush(){
+    document.getElementById('pushBanner').classList.add('show');
+    showToast('Notificación enviada a Héctor y a Julián','notifications_active');
+  }
+  function closePush(){
+    document.getElementById('pushBanner').classList.remove('show');
+  }
+
+  // --- Gamificación: rachas, insignias, sello ---
+  let streak = [true,true,true,true];
+  function renderStreak(){
+    const track = document.getElementById('streakTrack');
+    track.innerHTML = streak.map(v=>{
+      const cls = v===true?'on':(v===false?'missed':'');
+      const icon = v===true?'check':(v===false?'close':'');
+      return '<div class="streak-dot '+cls+'">'+(icon?'<span class="material-symbols-rounded">'+icon+'</span>':'')+'</div>';
+    }).join('');
+  }
+  function markService(onTime){
+    if(onTime){
+      streak.push(true);
+      if(streak.length>6) streak.shift();
+      document.getElementById('guardianCard').classList.remove('broken');
+      document.getElementById('shieldIcon').textContent = 'shield';
+      document.getElementById('guardianTitle').textContent = 'Guardián del Motor';
+      document.getElementById('guardianSub').textContent = 'Escudo Anti-Inflación activo — precio congelado en tu próximo service';
+      showToast('Service a tiempo registrado — racha +1','check_circle');
+    } else {
+      streak.push(false);
+      if(streak.length>6) streak.shift();
+      document.getElementById('guardianCard').classList.add('broken');
+      document.getElementById('shieldIcon').textContent = 'heart_broken';
+      document.getElementById('guardianTitle').textContent = 'Racha perdida';
+      document.getElementById('guardianSub').textContent = 'Perdiste el Escudo Anti-Inflación — recuperalo con tu próximo service a tiempo';
+      showToast('Service perdido — se reinició tu racha','warning');
+    }
+    renderStreak();
+  }
+  function shareBadge(name){
+    showToast('Insignia "'+name+'" compartida','share');
+  }
+  function stampSeal(){
+    document.getElementById('stamp').classList.add('stamped');
+    showToast('Historial sellado — valor de reventa reforzado','flag');
+  }
+
+  renderStreak();
+  paintHotspots();
+  renderHealthScanner();
+  updateLiveIndicators();
+  checkSerialSupport();
+</script>
+</body>
+</html>

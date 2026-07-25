@@ -1,0 +1,17 @@
+# Environment / secrets — never commit real keys
+.env
+.env.*
+!.env.example
+
+# Dependencies (if a package.json gets added later)
+node_modules/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+
+# Local-only Claude Code settings (per-machine permissions, not shared)
+.claude/settings.local.json
+
+# Vercel local metadata
+.vercel
