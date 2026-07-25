@@ -724,7 +724,10 @@
     }
     btn.disabled = true;
     msg.textContent = 'Enviando link...';
-    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
+    const CANONICAL_ORIGIN = 'https://www.zenzor.com.ar';
+    const isLocalDev = /^(localhost|127\.0\.0\.1)$/.test(window.location.hostname);
+    const redirectOrigin = isLocalDev ? window.location.origin : CANONICAL_ORIGIN;
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectOrigin } });
     if(error){
       btn.disabled = false;
       msg.textContent = 'Error al enviar el link: ' + error.message;
