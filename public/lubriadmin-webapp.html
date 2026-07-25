@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
     --accent:#0a84ff;
@@ -347,7 +348,8 @@
   .badge.locked{opacity:.45;}
   .badge-icon{font-size:26px;display:block;margin:0 auto 6px;color:var(--accent);}
   .badge-name{font-size:12px;font-weight:700;display:block;}
-  .badge-share{margin-top:8px;font-size:11px;font-weight:700;color:var(--accent-dark);background:rgba(10,132,255,0.12);border:none;border-radius:10px;padding:6px 10px;cursor:pointer;}
+  .badge-share{display:none;margin-top:8px;font-size:11px;font-weight:700;color:var(--accent-dark);background:rgba(10,132,255,0.12);border:none;border-radius:10px;padding:6px 10px;cursor:pointer;}
+  .badge.earned .badge-share{display:inline-block;}
 
   .history-doc{
     position:relative;background:#fff;border-radius:16px;padding:16px;box-shadow:0 4px 14px rgba(0,0,0,0.08);
@@ -386,20 +388,45 @@
   .toast .material-symbols-rounded{font-size:18px;}
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
   @media(max-width:899.98px){.toast{bottom:94px;}}
+
+  /* --- Login (magic link) --- */
+  .auth-gate{
+    position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;padding:20px;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(10,132,255,0.25), transparent 45%),
+      radial-gradient(circle at 85% 15%, rgba(255,159,10,0.18), transparent 40%),
+      radial-gradient(circle at 50% 90%, rgba(52,199,89,0.18), transparent 45%),
+      linear-gradient(180deg,#eef4fb,#e7ecf5 60%,#f4f6fa);
+  }
+  .auth-gate.show{display:flex;}
+  .auth-card{width:100%;max-width:360px;background:var(--glass-bg-strong);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:28px 24px;box-shadow:0 20px 50px rgba(31,38,135,0.2);text-align:center;}
+  .auth-logo{display:flex;align-items:center;justify-content:center;gap:8px;font-size:20px;font-weight:800;margin-bottom:18px;color:var(--text-dark);}
+  .auth-input{width:100%;border:1px solid rgba(0,0,0,0.12);border-radius:14px;padding:12px 14px;font-size:14px;margin:14px 0;background:#fff;font-family:inherit;}
+  .auth-input:focus{outline:2px solid var(--accent);outline-offset:1px;}
 </style>
 </head>
 <body>
 
-<div class="app-shell">
+<div class="auth-gate" id="authGate">
+  <div class="auth-card">
+    <div class="auth-logo"><span class="material-symbols-rounded">directions_car</span>Lubri-admin</div>
+    <p class="hint" id="authStatusMsg">Ingresá tu email para recibir un link de acceso</p>
+    <input type="email" id="authEmail" class="auth-input" placeholder="tu@email.com" autocomplete="email" inputmode="email">
+    <button class="btn-primary" id="authSendBtn" onclick="sendMagicLink()"><span class="material-symbols-rounded">mail</span>Enviar link mágico</button>
+  </div>
+</div>
+
+<div class="app-shell" id="appShell" style="display:none;">
 
   <nav class="app-nav">
     <div class="nav-brand">Lubri-admin</div>
-    <button class="nav-btn active" data-screen="home" onclick="showScreen('home')"><span class="material-symbols-rounded icon">home</span><span>Inicio</span></button>
-    <button class="nav-btn" data-screen="vincular" onclick="showScreen('vincular')"><span class="material-symbols-rounded icon">link</span><span>Vincular</span></button>
-    <button class="nav-btn" data-screen="diagnostico" onclick="showScreen('diagnostico')"><span class="material-symbols-rounded icon">stethoscope</span><span>Diagnóst.</span></button>
-    <button class="nav-btn" data-screen="taller" onclick="showScreen('taller')"><span class="material-symbols-rounded icon">storefront</span><span>Taller</span></button>
-    <button class="nav-btn" data-screen="certificado" onclick="showScreen('certificado')"><span class="material-symbols-rounded icon">workspace_premium</span><span>Certif.</span></button>
-    <button class="nav-btn" data-screen="logros" onclick="showScreen('logros')"><span class="material-symbols-rounded icon">emoji_events</span><span>Logros</span></button>
+    <button class="nav-btn active" data-screen="home" data-role="cliente" onclick="showScreen('home')"><span class="material-symbols-rounded icon">home</span><span>Inicio</span></button>
+    <button class="nav-btn" data-screen="vincular" data-role="cliente" onclick="showScreen('vincular')"><span class="material-symbols-rounded icon">link</span><span>Vincular</span></button>
+    <button class="nav-btn" data-screen="diagnostico" data-role="cliente" onclick="showScreen('diagnostico')"><span class="material-symbols-rounded icon">stethoscope</span><span>Diagnóst.</span></button>
+    <button class="nav-btn" data-screen="taller" data-role="taller" onclick="showScreen('taller')"><span class="material-symbols-rounded icon">storefront</span><span>Taller</span></button>
+    <button class="nav-btn" data-screen="certificado" data-role="cliente" onclick="showScreen('certificado')"><span class="material-symbols-rounded icon">workspace_premium</span><span>Certif.</span></button>
+    <button class="nav-btn" data-screen="logros" data-role="cliente" onclick="showScreen('logros')"><span class="material-symbols-rounded icon">emoji_events</span><span>Logros</span></button>
+    <button class="nav-btn" onclick="signOut()"><span class="material-symbols-rounded icon">logout</span><span>Salir</span></button>
   </nav>
 
   <div class="main-area">
@@ -410,11 +437,11 @@
       <section class="screen active" id="screen-home">
         <div class="app-header">
           <div>
-            <p class="eyebrow">Hola, Julián</p>
-            <h1>Toyota Corolla '19 · AB123CD</h1>
+            <p class="eyebrow" id="userGreeting">Hola</p>
+            <h1 id="vehicleHeader">Cargando vehículo...</h1>
             <div class="live-indicator" id="liveIndicatorHome"><span class="material-symbols-rounded">sensors</span>Transmisión en vivo</div>
           </div>
-          <div class="avatar">JR</div>
+          <div class="avatar" id="userAvatar">--</div>
         </div>
 
         <div class="home-grid">
@@ -542,29 +569,7 @@
         </div>
 
         <div class="taller-tab active" id="tallerTab-panel">
-          <div class="fault-card">
-            <div class="fault-head">
-              <div><strong>Toyota Corolla '19 · AB123CD</strong><p>Julián R. — llega hoy 17:30</p></div>
-              <span class="chip chip-red">Urgente</span>
-            </div>
-            <div class="fault-issue">
-              <span class="material-symbols-rounded">troubleshoot</span>
-              <div><strong>Motor · DTC P0300</strong><p>Pequeña falla en las bujías: el motor gasta un 5% más de combustible</p></div>
-            </div>
-            <button class="btn-parts" onclick="prepararRepuestos(this,'Juego de bujías NGK')"><span class="material-symbols-rounded">inventory_2</span>Preparar repuestos</button>
-          </div>
-
-          <div class="fault-card">
-            <div class="fault-head">
-              <div><strong>VW Gol Trend '21 · KL456MN</strong><p>Marina S. — llega mañana 09:00</p></div>
-              <span class="chip chip-amber">Atención</span>
-            </div>
-            <div class="fault-issue">
-              <span class="material-symbols-rounded">troubleshoot</span>
-              <div><strong>Freno delantero · DTC C1235</strong><p>Pastillas con desgaste avanzado — quedan ~1.500 km</p></div>
-            </div>
-            <button class="btn-parts" onclick="prepararRepuestos(this,'Pastillas de freno delanteras')"><span class="material-symbols-rounded">inventory_2</span>Preparar repuestos</button>
-          </div>
+          <div id="faultsList"><p class="hint">Cargando fallas del taller...</p></div>
         </div>
 
         <div class="taller-tab" id="tallerTab-config">
@@ -600,16 +605,15 @@
             <span class="chip chip-green" id="certStatusChip">Óptimo</span>
           </div>
           <h2 id="certTitle">Guardián del Motor</h2>
-          <p id="certSub">Toyota Corolla '19 · AB123CD — sin fallas detectadas en el último escaneo</p>
+          <p id="certSub">Cargando datos del vehículo...</p>
           <div class="cert-divider"></div>
-          <div class="cert-row"><span>Emitido</span><span>24/07/2026</span></div>
-          <div class="cert-row"><span>Kilometraje</span><span>84.200 km</span></div>
+          <div class="cert-row"><span>Emitido</span><span id="certEmitido">--</span></div>
+          <div class="cert-row"><span>Kilometraje</span><span id="certKm">--</span></div>
           <div class="cert-row"><span>Próxima revisión</span><span>2 de agosto</span></div>
         </div>
 
         <div class="demo-controls">
-          <button class="btn-secondary" onclick="setCertState('limpio')"><span class="material-symbols-rounded">check_circle</span>Diagnóstico limpio</button>
-          <button class="btn-secondary" onclick="setCertState('falla')"><span class="material-symbols-rounded">warning</span>Simular falla</button>
+          <button class="btn-secondary" onclick="refreshCertificate()"><span class="material-symbols-rounded">refresh</span>Actualizar certificado</button>
         </div>
 
         <button class="btn-primary" onclick="showToast('Informe enviado por WhatsApp','chat')"><span class="material-symbols-rounded">chat</span>Enviar informe completo</button>
@@ -638,31 +642,32 @@
         </div>
 
         <h2 class="section-title">Insignias</h2>
-        <div class="badge-grid">
-          <div class="badge earned">
+        <div class="badge-grid" id="badgeGrid">
+          <div class="badge locked" data-badge="reloj_suizo">
             <span class="badge-icon material-symbols-rounded">timer</span>
             <span class="badge-name">Reloj Suizo</span>
             <button class="badge-share" onclick="shareBadge('Reloj Suizo')">Compartir</button>
           </div>
-          <div class="badge earned">
+          <div class="badge locked" data-badge="primer_service">
             <span class="badge-icon material-symbols-rounded">star</span>
             <span class="badge-name">Primer service</span>
+            <button class="badge-share" onclick="shareBadge('Primer service')">Compartir</button>
           </div>
-          <div class="badge locked">
+          <div class="badge locked" data-badge="un_anio_sin_fallas">
             <span class="badge-icon material-symbols-rounded">military_tech</span>
             <span class="badge-name">1 año sin fallas</span>
+            <button class="badge-share" onclick="shareBadge('1 año sin fallas')">Compartir</button>
           </div>
-          <div class="badge locked">
+          <div class="badge locked" data-badge="cliente_vip">
             <span class="badge-icon material-symbols-rounded">diamond</span>
             <span class="badge-name">Cliente VIP</span>
+            <button class="badge-share" onclick="shareBadge('Cliente VIP')">Compartir</button>
           </div>
         </div>
 
         <h2 class="section-title">Historial</h2>
         <div class="history-doc">
-          <p>15/03/2026 — Cambio de aceite y filtro</p>
-          <p>02/06/2026 — Rotación de neumáticos</p>
-          <p>20/07/2026 — Revisión de frenos</p>
+          <div id="historyList"><p class="hint">Sin servicios registrados todavía.</p></div>
           <div class="stamp" id="stamp">SELLO<br>CALIDAD</div>
         </div>
         <button class="btn-primary" onclick="stampSeal()"><span class="material-symbols-rounded">flag</span>Finalizar service y sellar historial</button>
@@ -687,6 +692,130 @@
 <div class="toast" id="toast"></div>
 
 <script>
+  // --- Supabase: conexión + sesión ---
+  // La URL y la clave "publishable/anon" están pensadas para ser públicas:
+  // no dan acceso a nada que las políticas RLS de supabase/schema.sql no permitan.
+  const SUPABASE_URL = 'https://gipaxnljaayhdpvesvbo.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_28b88V_XHQWbEtBNVuaY1g_VyRReMPY';
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const BADGE_CATALOG = {
+    reloj_suizo: 'Reloj Suizo',
+    primer_service: 'Primer service',
+    un_anio_sin_fallas: '1 año sin fallas',
+    cliente_vip: 'Cliente VIP'
+  };
+
+  let currentUser = null;
+  let currentProfile = null;
+  let currentVehicle = null;
+
+  async function sendMagicLink(){
+    const emailInput = document.getElementById('authEmail');
+    const email = emailInput.value.trim();
+    const btn = document.getElementById('authSendBtn');
+    const msg = document.getElementById('authStatusMsg');
+    if(!email || !email.includes('@')){
+      msg.textContent = 'Ingresá un email válido';
+      return;
+    }
+    btn.disabled = true;
+    msg.textContent = 'Enviando link...';
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: window.location.origin } });
+    if(error){
+      btn.disabled = false;
+      msg.textContent = 'Error al enviar el link: ' + error.message;
+      return;
+    }
+    msg.textContent = 'Listo — revisá tu email y tocá el link para entrar';
+    emailInput.disabled = true;
+    btn.style.display = 'none';
+  }
+
+  async function signOut(){
+    await sb.auth.signOut();
+  }
+
+  function applyRoleVisibility(role){
+    document.querySelectorAll('.nav-btn[data-role]').forEach(btn=>{
+      btn.style.display = (btn.dataset.role === role) ? '' : 'none';
+    });
+  }
+
+  async function ensureVehicle(){
+    const { data: vehicles, error } = await sb.from('vehicles').select('*').eq('owner_id', currentUser.id).limit(1);
+    if(error){ console.error(error); return; }
+    if(vehicles && vehicles.length){
+      currentVehicle = vehicles[0];
+      return;
+    }
+    const { data: created, error: insErr } = await sb.from('vehicles').insert({
+      owner_id: currentUser.id, plate: 'AB123CD', brand: 'Toyota', model: 'Corolla', year: 2019, km: 84200
+    }).select().single();
+    if(insErr){ console.error(insErr); return; }
+    currentVehicle = created;
+  }
+
+  function renderVehicleHeader(){
+    if(!currentVehicle) return;
+    document.getElementById('userGreeting').textContent = 'Hola, ' + (currentProfile.full_name || currentUser.email.split('@')[0]);
+    document.getElementById('vehicleHeader').textContent = currentVehicle.brand+' '+currentVehicle.model+" '"+String(currentVehicle.year).slice(-2)+' · '+currentVehicle.plate;
+    const initials = (currentProfile.full_name || currentUser.email).trim().split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase();
+    document.getElementById('userAvatar').textContent = initials || '--';
+  }
+
+  async function onSignedIn(session){
+    currentUser = session.user;
+    let { data: profile, error } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+    if(error || !profile){
+      console.error('No se pudo cargar el perfil', error);
+      document.getElementById('authStatusMsg').textContent = 'No se pudo cargar tu perfil. Probá recargar la página.';
+      return;
+    }
+    currentProfile = profile;
+    document.getElementById('authGate').classList.remove('show');
+    document.getElementById('appShell').style.display = '';
+    applyRoleVisibility(profile.role);
+
+    if(profile.role === 'taller'){
+      showScreen('taller');
+      await loadWorkshopFaults();
+    } else {
+      await ensureVehicle();
+      renderVehicleHeader();
+      showScreen('home');
+      await Promise.all([loadServiceHistoryAndStreak(), loadBadges(), refreshCertificate()]);
+    }
+  }
+
+  function onSignedOut(){
+    currentUser = null; currentProfile = null; currentVehicle = null;
+    document.getElementById('appShell').style.display = 'none';
+    const gate = document.getElementById('authGate');
+    gate.classList.add('show');
+    document.getElementById('authStatusMsg').textContent = 'Ingresá tu email para recibir un link de acceso';
+    document.getElementById('authEmail').disabled = false;
+    document.getElementById('authEmail').value = '';
+    document.getElementById('authSendBtn').style.display = '';
+    document.getElementById('authSendBtn').disabled = false;
+  }
+
+  async function initAuth(){
+    const { data: { session } } = await sb.auth.getSession();
+    if(session){
+      await onSignedIn(session);
+    } else {
+      document.getElementById('authGate').classList.add('show');
+    }
+    sb.auth.onAuthStateChange((event, newSession)=>{
+      if(event === 'SIGNED_IN' && newSession && (!currentUser || currentUser.id !== newSession.user.id)){
+        onSignedIn(newSession);
+      } else if(event === 'SIGNED_OUT'){
+        onSignedOut();
+      }
+    });
+  }
+
   function showScreen(name){
     document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
     document.getElementById('screen-'+name).classList.add('active');
@@ -937,16 +1066,48 @@
       return;
     }
     const dataStr = cleanHex.substring(headerIdx+2);
-    let html = '', count = 0;
+    let html = '', count = 0, codes = [];
     for(let i=0;i<dataStr.length-3;i+=4){
       const bA = parseInt(dataStr.substring(i,i+2),16);
       const bB = parseInt(dataStr.substring(i+2,i+4),16);
       if(bA===0 && bB===0) continue;
-      html += '<div class="dtc-row"><span class="chip chip-red">'+decodeDTC(bA,bB)+'</span><span>Código de falla detectado por la ECU</span></div>';
+      const code = decodeDTC(bA,bB);
+      codes.push(code);
+      html += '<div class="dtc-row"><span class="chip chip-red">'+code+'</span><span>Código de falla detectado por la ECU</span></div>';
       count++;
     }
     resultsDiv.innerHTML = html || '<div class="dtc-clean"><span class="material-symbols-rounded">check_circle</span>ECU limpia, sin fallas</div>';
-    if(count>0) showToast(count+' código(s) de falla detectado(s)','error');
+    if(count>0){
+      showToast(count+' código(s) de falla detectado(s)','error');
+      await persistLiveDiagnostics(codes);
+    }
+  }
+  async function persistLiveDiagnostics(codes){
+    if(!currentVehicle) return;
+    const rows = codes.map(code => ({
+      vehicle_id: currentVehicle.id,
+      dtc_code: code,
+      severity: 'urgente',
+      label: 'Falla detectada por ECU',
+      human_explanation: 'Código de falla leído directamente del vehículo (modo 03)',
+      source: 'live'
+    }));
+    const { error } = await sb.from('diagnostics').insert(rows);
+    if(error){ console.error('No se pudo guardar el diagnóstico', error); return; }
+    if(currentVehicle.workshop_id){
+      const faultRows = rows.map(r => ({
+        workshop_id: currentVehicle.workshop_id,
+        vehicle_id: currentVehicle.id,
+        dtc_code: r.dtc_code,
+        label: r.label,
+        human_explanation: r.human_explanation,
+        severity: 'urgente',
+        status: 'pending'
+      }));
+      const { error: faultErr } = await sb.from('workshop_faults').insert(faultRows);
+      if(faultErr) console.error('No se pudo notificar al taller', faultErr);
+    }
+    await refreshCertificate();
   }
   async function clearDTC(){
     if(!obdConnected) return showToast('Conectá el dongle primero','link');
@@ -1072,32 +1233,96 @@
     document.querySelectorAll('.taller-tab').forEach(t=>t.classList.remove('active'));
     document.getElementById('tallerTab-'+tab).classList.add('active');
   }
-  function prepararRepuestos(btn, part){
+  async function loadWorkshopFaults(){
+    const list = document.getElementById('faultsList');
+    if(!currentProfile.workshop_id){
+      list.innerHTML = '<p class="hint">Tu cuenta todavía no está asignada a un taller. Pedile al administrador que la vincule desde Supabase.</p>';
+      return;
+    }
+    const { data, error } = await sb.from('workshop_faults')
+      .select('*, vehicles(plate,brand,model)')
+      .eq('workshop_id', currentProfile.workshop_id)
+      .order('created_at', { ascending: false });
+    if(error){
+      console.error(error);
+      list.innerHTML = '<p class="hint">No se pudieron cargar las fallas.</p>';
+      return;
+    }
+    renderWorkshopFaults(data || []);
+  }
+  function renderWorkshopFaults(faults){
+    const list = document.getElementById('faultsList');
+    if(!faults.length){
+      list.innerHTML = '<p class="hint">No hay fallas pendientes en este momento.</p>';
+      return;
+    }
+    list.innerHTML = faults.map(f=>{
+      const v = f.vehicles || {};
+      const sevChip = f.severity === 'urgente' ? 'chip-red' : 'chip-amber';
+      const sevText = f.severity === 'urgente' ? 'Urgente' : 'Atención';
+      const prepared = f.status === 'prepared';
+      const part = f.part_needed || 'Repuesto a confirmar';
+      return '<div class="fault-card">'+
+        '<div class="fault-head">'+
+          '<div><strong>'+(v.brand||'')+' '+(v.model||'')+' · '+(v.plate||'')+'</strong></div>'+
+          '<span class="chip '+sevChip+'">'+sevText+'</span>'+
+        '</div>'+
+        '<div class="fault-issue">'+
+          '<span class="material-symbols-rounded">troubleshoot</span>'+
+          '<div><strong>DTC '+f.dtc_code+'</strong><p>'+(f.human_explanation||f.label)+'</p></div>'+
+        '</div>'+
+        '<button class="btn-parts" '+(prepared?'disabled':'')+' onclick="prepararRepuestos(\''+f.id+'\', this, '+JSON.stringify(part)+')">'+
+          '<span class="material-symbols-rounded">'+(prepared?'check_circle':'inventory_2')+'</span>'+(prepared?part+' reservado':'Preparar repuestos')+
+        '</button>'+
+      '</div>';
+    }).join('');
+  }
+  async function prepararRepuestos(faultId, btn, part){
     btn.disabled = true;
+    const { error } = await sb.from('workshop_faults').update({ status: 'prepared' }).eq('id', faultId);
+    if(error){
+      showToast('No se pudo reservar el repuesto','error');
+      btn.disabled = false;
+      return;
+    }
     btn.innerHTML = '<span class="material-symbols-rounded">check_circle</span>'+part+' reservado';
     showToast('Repuesto reservado: '+part,'inventory_2');
   }
 
-  // --- Certificado de Bienestar Vehicular ---
-  function setCertState(state){
+  // --- Certificado de Bienestar Vehicular (a partir de los diagnósticos reales) ---
+  async function refreshCertificate(){
+    if(!currentVehicle) return;
+    document.getElementById('certKm').textContent = currentVehicle.km ? currentVehicle.km.toLocaleString('es-AR')+' km' : '--';
+    document.getElementById('certEmitido').textContent = new Date().toLocaleDateString('es-AR');
+
+    const { data, error } = await sb.from('diagnostics')
+      .select('*')
+      .eq('vehicle_id', currentVehicle.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    if(error){ console.error(error); return; }
+
     const card = document.getElementById('certCard');
     const icon = document.getElementById('certIcon');
     const chip = document.getElementById('certStatusChip');
     const title = document.getElementById('certTitle');
     const sub = document.getElementById('certSub');
-    if(state==='limpio'){
+    const latest = data && data[0];
+    const vehicleLabel = currentVehicle.brand+' '+currentVehicle.model+" '"+String(currentVehicle.year).slice(-2)+' · '+currentVehicle.plate;
+
+    if(!latest || latest.severity !== 'urgente'){
       card.classList.remove('falla');
       icon.textContent = 'workspace_premium';
       chip.className = 'chip chip-green'; chip.textContent = 'Óptimo';
       title.textContent = 'Guardián del Motor';
-      sub.textContent = "Toyota Corolla '19 · AB123CD — sin fallas detectadas en el último escaneo";
+      sub.textContent = vehicleLabel + ' — sin fallas urgentes en el último escaneo';
       closePush();
     } else {
       card.classList.add('falla');
       icon.textContent = 'gpp_good';
       chip.className = 'chip chip-red'; chip.textContent = 'Urgente';
       title.textContent = 'Escudo Anti-Falla activado';
-      sub.textContent = 'Se detectó una falla urgente — agendá el service y conservás el descuento express';
+      sub.textContent = 'Falla urgente detectada ('+latest.dtc_code+') — agendá el service y conservás el descuento express';
       showPush();
     }
   }
@@ -1109,35 +1334,68 @@
     document.getElementById('pushBanner').classList.remove('show');
   }
 
-  // --- Gamificación: rachas, insignias, sello ---
-  let streak = [true,true,true,true];
-  function renderStreak(){
+  // --- Gamificación: rachas, insignias, historial (datos reales por veículo/perfil) ---
+  function renderStreak(rows){
+    const last6 = rows.slice(-6);
     const track = document.getElementById('streakTrack');
-    track.innerHTML = streak.map(v=>{
-      const cls = v===true?'on':(v===false?'missed':'');
-      const icon = v===true?'check':(v===false?'close':'');
-      return '<div class="streak-dot '+cls+'">'+(icon?'<span class="material-symbols-rounded">'+icon+'</span>':'')+'</div>';
+    track.innerHTML = last6.map(r=>{
+      const cls = r.on_time ? 'on' : 'missed';
+      const icon = r.on_time ? 'check' : 'close';
+      return '<div class="streak-dot '+cls+'"><span class="material-symbols-rounded">'+icon+'</span></div>';
     }).join('');
+    const guardian = document.getElementById('guardianCard');
+    const brokenStreak = last6.length>0 && !last6[last6.length-1].on_time;
+    guardian.classList.toggle('broken', brokenStreak);
+    document.getElementById('shieldIcon').textContent = brokenStreak ? 'heart_broken' : 'shield';
+    document.getElementById('guardianTitle').textContent = brokenStreak ? 'Racha perdida' : 'Guardián del Motor';
+    document.getElementById('guardianSub').textContent = brokenStreak
+      ? 'Perdiste el Escudo Anti-Inflación — recuperalo con tu próximo service a tiempo'
+      : 'Escudo Anti-Inflación activo — precio congelado en tu próximo service';
   }
-  function markService(onTime){
-    if(onTime){
-      streak.push(true);
-      if(streak.length>6) streak.shift();
-      document.getElementById('guardianCard').classList.remove('broken');
-      document.getElementById('shieldIcon').textContent = 'shield';
-      document.getElementById('guardianTitle').textContent = 'Guardián del Motor';
-      document.getElementById('guardianSub').textContent = 'Escudo Anti-Inflación activo — precio congelado en tu próximo service';
-      showToast('Service a tiempo registrado — racha +1','check_circle');
-    } else {
-      streak.push(false);
-      if(streak.length>6) streak.shift();
-      document.getElementById('guardianCard').classList.add('broken');
-      document.getElementById('shieldIcon').textContent = 'heart_broken';
-      document.getElementById('guardianTitle').textContent = 'Racha perdida';
-      document.getElementById('guardianSub').textContent = 'Perdiste el Escudo Anti-Inflación — recuperalo con tu próximo service a tiempo';
-      showToast('Service perdido — se reinició tu racha','warning');
-    }
-    renderStreak();
+  function renderHistory(rows){
+    const list = document.getElementById('historyList');
+    if(!rows.length){ list.innerHTML = '<p class="hint">Sin servicios registrados todavía.</p>'; return; }
+    list.innerHTML = rows.map(r=>'<p>'+new Date(r.performed_at).toLocaleDateString('es-AR')+' — '+r.description+'</p>').join('');
+  }
+  async function loadServiceHistoryAndStreak(){
+    const { data, error } = await sb.from('service_history')
+      .select('*')
+      .eq('vehicle_id', currentVehicle.id)
+      .order('performed_at', { ascending: true });
+    if(error){ console.error(error); return; }
+    renderStreak(data || []);
+    renderHistory((data || []).slice().reverse());
+  }
+  async function grantBadge(key){
+    await sb.from('badges').upsert({ profile_id: currentUser.id, badge_key: key }, { onConflict: 'profile_id,badge_key' });
+  }
+  async function loadBadges(){
+    const { data, error } = await sb.from('badges').select('badge_key').eq('profile_id', currentUser.id);
+    if(error){ console.error(error); return; }
+    const earned = new Set((data||[]).map(b=>b.badge_key));
+    document.querySelectorAll('#badgeGrid .badge').forEach(el=>{
+      el.classList.toggle('earned', earned.has(el.dataset.badge));
+      el.classList.toggle('locked', !earned.has(el.dataset.badge));
+    });
+  }
+  async function markService(onTime){
+    if(!currentVehicle) return;
+    const description = onTime ? 'Service registrado a tiempo' : 'Service con retraso / falla reportada';
+    const { error } = await sb.from('service_history').insert({
+      vehicle_id: currentVehicle.id, description, on_time: onTime
+    });
+    if(error){ showToast('No se pudo registrar el service','error'); console.error(error); return; }
+
+    const { data: history } = await sb.from('service_history').select('*').eq('vehicle_id', currentVehicle.id).order('performed_at', { ascending: true });
+    renderStreak(history || []);
+    renderHistory((history || []).slice().reverse());
+
+    if((history||[]).length === 1) await grantBadge('primer_service');
+    const last3 = (history||[]).slice(-3);
+    if(last3.length === 3 && last3.every(r=>r.on_time)) await grantBadge('reloj_suizo');
+    await loadBadges();
+
+    showToast(onTime ? 'Service a tiempo registrado — racha +1' : 'Service perdido — se reinició tu racha', onTime ? 'check_circle' : 'warning');
   }
   function shareBadge(name){
     showToast('Insignia "'+name+'" compartida','share');
@@ -1147,11 +1405,11 @@
     showToast('Historial sellado — valor de reventa reforzado','flag');
   }
 
-  renderStreak();
   paintHotspots();
   renderHealthScanner();
   updateLiveIndicators();
   checkSerialSupport();
+  initAuth();
 </script>
 </body>
 </html>
