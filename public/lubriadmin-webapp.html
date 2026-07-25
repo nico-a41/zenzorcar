@@ -209,7 +209,7 @@
 
   .obd-metrics{display:none;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px;}
   .obd-metrics.show{display:grid;}
-  @media(min-width:680px){.obd-metrics{grid-template-columns:repeat(4,1fr);}}
+  @media(min-width:680px){.obd-metrics{grid-template-columns:repeat(5,1fr);}}
   .metric-card{background:var(--glass-bg);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:20px;padding:16px 10px;text-align:center;}
   .metric-card > .material-symbols-rounded{color:var(--accent);font-size:22px;margin-bottom:6px;}
   .metric-value{font-size:26px;font-weight:800;}
@@ -524,6 +524,7 @@
           <div class="metric-card"><span class="material-symbols-rounded">directions_car</span><div class="metric-value" id="valSpeed">--</div><span class="metric-label">km/h</span></div>
           <div class="metric-card"><span class="material-symbols-rounded">device_thermostat</span><div class="metric-value" id="valCoolant">--</div><span class="metric-label">°C refrigerante</span></div>
           <div class="metric-card"><span class="material-symbols-rounded">bolt</span><div class="metric-value" id="valLoad">--</div><span class="metric-label">% carga motor</span></div>
+          <div class="metric-card"><span class="material-symbols-rounded">battery_full</span><div class="metric-value" id="valBattery">--</div><span class="metric-label">V batería</span></div>
         </div>
 
         <div class="glass-card" id="obdDtcSection">
@@ -996,7 +997,7 @@
     updateLiveIndicators();
     document.getElementById('obdMetrics').classList.remove('show');
     document.getElementById('obdDtcSection').classList.remove('show');
-    ['valRPM','valSpeed','valCoolant','valLoad'].forEach(id=>setMetric(id,'--'));
+    ['valRPM','valSpeed','valCoolant','valLoad','valBattery'].forEach(id=>setMetric(id,'--'));
     showToast('Dongle desconectado','link_off');
   }
 
@@ -1035,6 +1036,12 @@
       if(loadHex && loadHex.length>=2){
         gotAny = true;
         setMetric('valLoad', Math.round(parseInt(loadHex.substring(0,2),16)*100/255));
+      }
+      const batteryHex = parsePIDHex(await sendOBDCommand('01 42'), '42');
+      if(batteryHex && batteryHex.length>=4){
+        gotAny = true;
+        const A = parseInt(batteryHex.substring(0,2),16), B = parseInt(batteryHex.substring(2,4),16);
+        setMetric('valBattery', (((A*256)+B)/1000).toFixed(1));
       }
       obdConsecutiveErrors = gotAny ? 0 : obdConsecutiveErrors + 1;
     } catch(e){
