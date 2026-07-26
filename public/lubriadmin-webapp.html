@@ -287,8 +287,8 @@
   .dtc-human{margin:0;font-size:13px;color:var(--text-mid);line-height:1.5;}
 
   /* --- Taller (Héctor): panel técnico + configuración --- */
-  .segmented{display:inline-flex;background:rgba(0,0,0,0.06);border-radius:14px;padding:4px;margin-bottom:18px;gap:2px;}
-  .seg-btn{border:none;background:none;padding:9px 14px;border-radius:10px;font-size:12px;font-weight:700;color:var(--text-mid);display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-family:inherit;}
+  .segmented{display:inline-flex;max-width:100%;overflow-x:auto;background:rgba(0,0,0,0.06);border-radius:14px;padding:4px;margin-bottom:18px;gap:2px;}
+  .seg-btn{border:none;background:none;padding:9px 14px;border-radius:10px;font-size:12px;font-weight:700;color:var(--text-mid);display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;}
   .seg-btn .material-symbols-rounded{font-size:18px;}
   .seg-btn.active{background:#fff;color:var(--text-dark);box-shadow:0 2px 6px rgba(0,0,0,0.12);}
   .taller-tab{display:none;}
@@ -302,6 +302,16 @@
   .fault-issue p{margin:2px 0 0;font-size:12px;color:var(--text-mid);}
   .btn-parts{width:100%;border:none;border-radius:14px;padding:11px 14px;background:rgba(10,132,255,0.12);color:var(--accent-dark);font-weight:700;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;font-family:inherit;}
   .btn-parts:disabled{background:rgba(52,199,89,0.18);color:#1c7a34;opacity:1;cursor:default;}
+
+  .client-card{background:var(--glass-bg);backdrop-filter:blur(20px);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:16px 18px;margin-bottom:14px;}
+  .client-head{display:flex;align-items:center;gap:12px;margin-bottom:12px;}
+  .client-avatar{width:38px;height:38px;flex-shrink:0;border-radius:50%;background:linear-gradient(135deg,var(--accent),#5ac8fa);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
+  .client-head strong{display:block;font-size:14px;}
+  .client-head span{font-size:12px;color:var(--text-mid);}
+  .client-vehicle{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.5);border-radius:14px;padding:10px 12px;}
+  .client-vehicle:not(:last-child){margin-bottom:8px;}
+  .client-vehicle .material-symbols-rounded{color:var(--accent);flex-shrink:0;}
+  .client-vehicle p{margin:2px 0 0;font-size:12px;color:var(--text-mid);}
 
   /* --- Certificado --- */
   .cert-card{
@@ -574,11 +584,16 @@
 
         <div class="segmented">
           <button class="seg-btn active" data-tab="panel" onclick="showTallerTab('panel')"><span class="material-symbols-rounded">dashboard</span>Panel técnico</button>
+          <button class="seg-btn" data-tab="clientes" onclick="showTallerTab('clientes')"><span class="material-symbols-rounded">group</span>Clientes</button>
           <button class="seg-btn" data-tab="config" onclick="showTallerTab('config')"><span class="material-symbols-rounded">build</span>Configuración</button>
         </div>
 
         <div class="taller-tab active" id="tallerTab-panel">
           <div id="faultsList"><p class="hint">Cargando fallas del taller...</p></div>
+        </div>
+
+        <div class="taller-tab" id="tallerTab-clientes">
+          <div id="clientsList"><p class="hint">Cargando clientes...</p></div>
         </div>
 
         <div class="taller-tab" id="tallerTab-config">
@@ -791,7 +806,7 @@
 
     if(profile.role === 'taller'){
       showScreen('taller');
-      await loadWorkshopFaults();
+      await Promise.all([loadWorkshopFaults(), loadWorkshopClients()]);
     } else {
       await ensureVehicle();
       renderVehicleHeader();
@@ -1315,6 +1330,52 @@
     }
     btn.innerHTML = '<span class="material-symbols-rounded">check_circle</span>'+part+' reservado';
     showToast('Repuesto reservado: '+part,'inventory_2');
+  }
+
+  async function loadWorkshopClients(){
+    const list = document.getElementById('clientsList');
+    if(!currentProfile.workshop_id){
+      list.innerHTML = '<p class="hint">Tu cuenta todavía no está asignada a un taller.</p>';
+      return;
+    }
+    const { data, error } = await sb.from('vehicles')
+      .select('*, profiles(full_name)')
+      .eq('workshop_id', currentProfile.workshop_id)
+      .order('created_at', { ascending: false });
+    if(error){
+      console.error(error);
+      list.innerHTML = '<p class="hint">No se pudieron cargar los clientes.</p>';
+      return;
+    }
+    renderWorkshopClients(data || []);
+  }
+  function renderWorkshopClients(vehicles){
+    const list = document.getElementById('clientsList');
+    if(!vehicles.length){
+      list.innerHTML = '<p class="hint">Todavía no hay clientes con vehículos asignados a tu taller.</p>';
+      return;
+    }
+    const byOwner = {};
+    vehicles.forEach(v=>{
+      if(!byOwner[v.owner_id]) byOwner[v.owner_id] = { name: (v.profiles && v.profiles.full_name) || 'Cliente sin nombre', vehicles: [] };
+      byOwner[v.owner_id].vehicles.push(v);
+    });
+    list.innerHTML = Object.values(byOwner).map(client=>{
+      const initials = client.name.trim().split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase();
+      const vehiclesHtml = client.vehicles.map(v=>
+        '<div class="client-vehicle">'+
+          '<span class="material-symbols-rounded">directions_car</span>'+
+          '<div><strong>'+(v.brand||'')+' '+(v.model||'')+" '"+String(v.year||'').slice(-2)+'</strong><p>'+(v.plate||'')+' · '+(v.km||0)+' km</p></div>'+
+        '</div>'
+      ).join('');
+      return '<div class="client-card">'+
+        '<div class="client-head">'+
+          '<div class="client-avatar">'+(initials||'--')+'</div>'+
+          '<div><strong>'+client.name+'</strong><span>'+client.vehicles.length+' vehículo(s)</span></div>'+
+        '</div>'+
+        vehiclesHtml+
+      '</div>';
+    }).join('');
   }
 
   // --- Certificado de Bienestar Vehicular (a partir de los diagnósticos reales) ---
