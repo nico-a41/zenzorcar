@@ -1328,6 +1328,9 @@
     }
     renderWorkshopFaults(data || []);
   }
+  function escapeHtml(str){
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
   function renderWorkshopFaults(faults){
     const list = document.getElementById('faultsList');
     if(!faults.length){
@@ -1342,18 +1345,21 @@
       const part = f.part_needed || 'Repuesto a confirmar';
       return '<div class="fault-card">'+
         '<div class="fault-head">'+
-          '<div><strong>'+(v.brand||'')+' '+(v.model||'')+' · '+(v.plate||'')+'</strong></div>'+
+          '<div><strong>'+escapeHtml((v.brand||'')+' '+(v.model||'')+' · '+(v.plate||''))+'</strong></div>'+
           '<span class="chip '+sevChip+'">'+sevText+'</span>'+
         '</div>'+
         '<div class="fault-issue">'+
           '<span class="material-symbols-rounded">troubleshoot</span>'+
-          '<div><strong>DTC '+f.dtc_code+'</strong><p>'+(f.human_explanation||f.label)+'</p></div>'+
+          '<div><strong>DTC '+escapeHtml(f.dtc_code)+'</strong><p>'+escapeHtml(f.human_explanation||f.label)+'</p></div>'+
         '</div>'+
-        '<button class="btn-parts" '+(prepared?'disabled':'')+' onclick="prepararRepuestos(\''+f.id+'\', this, '+JSON.stringify(part)+')">'+
-          '<span class="material-symbols-rounded">'+(prepared?'check_circle':'inventory_2')+'</span>'+(prepared?part+' reservado':'Preparar repuestos')+
+        '<button class="btn-parts" data-fault-id="'+escapeHtml(f.id)+'" data-part="'+escapeHtml(part)+'" '+(prepared?'disabled':'')+'>'+
+          '<span class="material-symbols-rounded">'+(prepared?'check_circle':'inventory_2')+'</span>'+(prepared?escapeHtml(part)+' reservado':'Preparar repuestos')+
         '</button>'+
       '</div>';
     }).join('');
+    list.querySelectorAll('.btn-parts').forEach(btn=>{
+      btn.addEventListener('click', ()=> prepararRepuestos(btn.dataset.faultId, btn, btn.dataset.part));
+    });
   }
   async function prepararRepuestos(faultId, btn, part){
     btn.disabled = true;
@@ -1399,20 +1405,23 @@
       const initials = client.name.trim().split(/\s+/).map(s=>s[0]).slice(0,2).join('').toUpperCase();
       const vehiclesHtml = client.vehicles.map(v=>{
         const label = (v.brand||'')+' '+(v.model||'')+" '"+String(v.year||'').slice(-2);
-        return '<div class="client-vehicle" onclick="openVehicleHistory('+JSON.stringify(v.id)+', '+JSON.stringify(label)+', '+JSON.stringify(client.name)+')">'+
+        return '<div class="client-vehicle" data-vehicle-id="'+escapeHtml(v.id)+'" data-vehicle-label="'+escapeHtml(label)+'" data-owner-name="'+escapeHtml(client.name)+'">'+
           '<span class="material-symbols-rounded">directions_car</span>'+
-          '<div><strong>'+label+'</strong><p>'+(v.plate||'')+' · '+(v.km||0)+' km</p></div>'+
+          '<div><strong>'+escapeHtml(label)+'</strong><p>'+escapeHtml(v.plate||'')+' · '+(v.km||0)+' km</p></div>'+
           '<span class="material-symbols-rounded chevron">chevron_right</span>'+
         '</div>';
       }).join('');
       return '<div class="client-card">'+
         '<div class="client-head">'+
-          '<div class="client-avatar">'+(initials||'--')+'</div>'+
-          '<div><strong>'+client.name+'</strong><span>'+client.vehicles.length+' vehículo(s)</span></div>'+
+          '<div class="client-avatar">'+escapeHtml(initials||'--')+'</div>'+
+          '<div><strong>'+escapeHtml(client.name)+'</strong><span>'+client.vehicles.length+' vehículo(s)</span></div>'+
         '</div>'+
         vehiclesHtml+
       '</div>';
     }).join('');
+    list.querySelectorAll('.client-vehicle').forEach(el=>{
+      el.addEventListener('click', ()=> openVehicleHistory(el.dataset.vehicleId, el.dataset.vehicleLabel, el.dataset.ownerName));
+    });
   }
 
   async function openVehicleHistory(vehicleId, vehicleLabel, ownerName){
