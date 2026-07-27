@@ -446,6 +446,9 @@
   .auth-logo{display:flex;align-items:center;justify-content:center;gap:8px;font-size:20px;font-weight:800;margin-bottom:18px;color:var(--text-dark);}
   .auth-input{width:100%;border:1px solid rgba(0,0,0,0.12);border-radius:14px;padding:12px 14px;font-size:14px;margin:14px 0;background:#fff;font-family:inherit;}
   .form-label{display:block;font-size:12px;font-weight:700;color:var(--text-mid);margin:14px 0 -6px;}
+  .form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  .form-row-2 .auth-input{margin:14px 0 0;}
+  .form-row-2 .form-label{margin:14px 0 -6px;}
   .auth-input:focus{outline:2px solid var(--accent);outline-offset:1px;}
 </style>
 </head>
@@ -611,6 +614,7 @@
         <div class="segmented">
           <button class="seg-btn active" data-tab="panel" onclick="showTallerTab('panel')"><span class="material-symbols-rounded">dashboard</span>Panel técnico</button>
           <button class="seg-btn" data-tab="clientes" onclick="showTallerTab('clientes')"><span class="material-symbols-rounded">group</span>Clientes</button>
+          <button class="seg-btn" data-tab="specs" onclick="showTallerTab('specs')"><span class="material-symbols-rounded">oil_barrel</span>Capacidades</button>
           <button class="seg-btn" data-tab="config" onclick="showTallerTab('config')"><span class="material-symbols-rounded">build</span>Configuración</button>
         </div>
 
@@ -620,6 +624,12 @@
 
         <div class="taller-tab" id="tallerTab-clientes">
           <div id="clientsList"><p class="hint">Cargando clientes...</p></div>
+        </div>
+
+        <div class="taller-tab" id="tallerTab-specs">
+          <input type="text" id="specsSearch" class="auth-input" placeholder="Buscar por marca o modelo..." oninput="filterSpecs()" style="margin-top:0;">
+          <div id="specsList"><p class="hint">Cargando fichas técnicas...</p></div>
+          <button class="add-vehicle-btn" onclick="openEditSpec(null)"><span class="material-symbols-rounded">add</span>Agregar ficha técnica</button>
         </div>
 
         <div class="taller-tab" id="tallerTab-config">
@@ -791,6 +801,36 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="editSpecModal" onclick="if(event.target===this) closeEditSpec()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div><h2 id="editSpecTitle">Ficha técnica</h2></div>
+      <button class="modal-close" onclick="closeEditSpec()"><span class="material-symbols-rounded">close</span></button>
+    </div>
+    <label class="form-label">Marca</label>
+    <input type="text" id="editSpecBrand" class="auth-input" placeholder="Toyota">
+    <label class="form-label">Modelo</label>
+    <input type="text" id="editSpecModel" class="auth-input" placeholder="Corolla">
+    <div class="form-row-2">
+      <div><label class="form-label">Año desde</label><input type="number" id="editSpecYearFrom" class="auth-input" placeholder="2014" inputmode="numeric"></div>
+      <div><label class="form-label">Año hasta</label><input type="number" id="editSpecYearTo" class="auth-input" placeholder="2019" inputmode="numeric"></div>
+    </div>
+    <div class="form-row-2">
+      <div><label class="form-label">Aceite (litros)</label><input type="number" step="0.1" id="editSpecOilCapacity" class="auth-input" placeholder="4.2" inputmode="decimal"></div>
+      <div><label class="form-label">Viscosidad</label><input type="text" id="editSpecOilViscosity" class="auth-input" placeholder="5W-30"></div>
+    </div>
+    <label class="form-label">Código filtro de aceite</label>
+    <input type="text" id="editSpecOilFilter" class="auth-input" placeholder="W712">
+    <label class="form-label">Código filtro de aire</label>
+    <input type="text" id="editSpecAirFilter" class="auth-input" placeholder="C25114">
+    <label class="form-label">Código filtro de cabina</label>
+    <input type="text" id="editSpecCabinFilter" class="auth-input" placeholder="CU2545">
+    <label class="form-label">Notas</label>
+    <input type="text" id="editSpecNotes" class="auth-input" placeholder="Opcional">
+    <button class="btn-primary" id="editSpecSaveBtn" onclick="saveSpecEdits()"><span class="material-symbols-rounded">check_circle</span>Guardar ficha</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -884,7 +924,7 @@
 
     if(profile.role === 'taller'){
       showScreen('taller');
-      await Promise.all([loadWorkshopFaults(), loadWorkshopClients()]);
+      await Promise.all([loadWorkshopFaults(), loadWorkshopClients(), loadVehicleSpecs()]);
     } else {
       await ensureVehicle();
       renderVehicleHeader();
@@ -1621,6 +1661,110 @@
     showToast(editingVehicleId ? 'Vehículo actualizado' : 'Vehículo agregado','check_circle');
     closeEditVehicle();
     await loadWorkshopClients();
+  }
+
+  // --- Ficha técnica: capacidades de aceite y códigos de filtro ---
+  let allSpecsCache = [];
+  let editingSpecId = null;
+  async function loadVehicleSpecs(){
+    const list = document.getElementById('specsList');
+    const { data, error } = await sb.from('vehicle_specs').select('*').order('brand').order('model');
+    if(error){
+      console.error(error);
+      list.innerHTML = '<p class="hint">No se pudieron cargar las fichas técnicas.</p>';
+      return;
+    }
+    allSpecsCache = data || [];
+    renderVehicleSpecs(allSpecsCache);
+  }
+  function filterSpecs(){
+    const q = document.getElementById('specsSearch').value.trim().toLowerCase();
+    if(!q){ renderVehicleSpecs(allSpecsCache); return; }
+    renderVehicleSpecs(allSpecsCache.filter(s=>
+      (s.brand||'').toLowerCase().includes(q) || (s.model||'').toLowerCase().includes(q)
+    ));
+  }
+  function renderVehicleSpecs(specs){
+    const list = document.getElementById('specsList');
+    if(!specs.length){
+      list.innerHTML = '<p class="hint">No hay fichas técnicas todavía. Agregá la primera con el botón de abajo.</p>';
+      return;
+    }
+    list.innerHTML = specs.map(s=>{
+      const years = (s.year_from || s.year_to) ? (s.year_from||'')+'–'+(s.year_to||'') : 'Todos los años';
+      const rows = [];
+      if(s.oil_capacity_liters || s.oil_viscosity) rows.push('<div class="detail-row"><span>Aceite motor</span><span>'+escapeHtml((s.oil_capacity_liters?s.oil_capacity_liters+' L':'')+(s.oil_capacity_liters&&s.oil_viscosity?' · ':'')+(s.oil_viscosity||''))+'</span></div>');
+      if(s.oil_filter_code) rows.push('<div class="detail-row"><span>Filtro de aceite</span><span>'+escapeHtml(s.oil_filter_code)+'</span></div>');
+      if(s.air_filter_code) rows.push('<div class="detail-row"><span>Filtro de aire</span><span>'+escapeHtml(s.air_filter_code)+'</span></div>');
+      if(s.cabin_filter_code) rows.push('<div class="detail-row"><span>Filtro de cabina</span><span>'+escapeHtml(s.cabin_filter_code)+'</span></div>');
+      return '<div class="client-card">'+
+        '<div class="fault-head">'+
+          '<div><strong>'+escapeHtml(s.brand+' '+s.model)+'</strong><p>'+escapeHtml(years)+'</p></div>'+
+          '<button class="client-edit-btn" data-spec-id="'+escapeHtml(s.id)+'"><span class="material-symbols-rounded">edit</span></button>'+
+        '</div>'+
+        rows.join('')+
+        (s.notes ? '<p class="hint">'+escapeHtml(s.notes)+'</p>' : '')+
+      '</div>';
+    }).join('');
+    list.querySelectorAll('.client-edit-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=> openEditSpec(btn.dataset.specId));
+    });
+  }
+  function openEditSpec(specId){
+    editingSpecId = specId || null;
+    const s = specId ? allSpecsCache.find(x=>x.id===specId) : null;
+    document.getElementById('editSpecTitle').textContent = s ? 'Editar ficha técnica' : 'Agregar ficha técnica';
+    document.getElementById('editSpecBrand').value = s ? (s.brand||'') : '';
+    document.getElementById('editSpecModel').value = s ? (s.model||'') : '';
+    document.getElementById('editSpecYearFrom').value = s ? (s.year_from||'') : '';
+    document.getElementById('editSpecYearTo').value = s ? (s.year_to||'') : '';
+    document.getElementById('editSpecOilCapacity').value = s ? (s.oil_capacity_liters||'') : '';
+    document.getElementById('editSpecOilViscosity').value = s ? (s.oil_viscosity||'') : '';
+    document.getElementById('editSpecOilFilter').value = s ? (s.oil_filter_code||'') : '';
+    document.getElementById('editSpecAirFilter').value = s ? (s.air_filter_code||'') : '';
+    document.getElementById('editSpecCabinFilter').value = s ? (s.cabin_filter_code||'') : '';
+    document.getElementById('editSpecNotes').value = s ? (s.notes||'') : '';
+    document.getElementById('editSpecModal').classList.add('show');
+  }
+  function closeEditSpec(){
+    document.getElementById('editSpecModal').classList.remove('show');
+    editingSpecId = null;
+  }
+  async function saveSpecEdits(){
+    const btn = document.getElementById('editSpecSaveBtn');
+    btn.disabled = true;
+    const payload = {
+      brand: document.getElementById('editSpecBrand').value.trim(),
+      model: document.getElementById('editSpecModel').value.trim(),
+      year_from: parseInt(document.getElementById('editSpecYearFrom').value, 10) || null,
+      year_to: parseInt(document.getElementById('editSpecYearTo').value, 10) || null,
+      oil_capacity_liters: parseFloat(document.getElementById('editSpecOilCapacity').value) || null,
+      oil_viscosity: document.getElementById('editSpecOilViscosity').value.trim() || null,
+      oil_filter_code: document.getElementById('editSpecOilFilter').value.trim() || null,
+      air_filter_code: document.getElementById('editSpecAirFilter').value.trim() || null,
+      cabin_filter_code: document.getElementById('editSpecCabinFilter').value.trim() || null,
+      notes: document.getElementById('editSpecNotes').value.trim() || null
+    };
+    if(!payload.brand || !payload.model){
+      btn.disabled = false;
+      showToast('Marca y modelo son obligatorios','error');
+      return;
+    }
+    let error;
+    if(editingSpecId){
+      ({ error } = await sb.from('vehicle_specs').update(payload).eq('id', editingSpecId));
+    } else {
+      ({ error } = await sb.from('vehicle_specs').insert(payload));
+    }
+    btn.disabled = false;
+    if(error){
+      console.error(error);
+      showToast('No se pudo guardar la ficha técnica','error');
+      return;
+    }
+    showToast(editingSpecId ? 'Ficha actualizada' : 'Ficha agregada','check_circle');
+    closeEditSpec();
+    await loadVehicleSpecs();
   }
 
   // --- Certificado de Bienestar Vehicular (a partir de los diagnósticos reales) ---
