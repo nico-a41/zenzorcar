@@ -317,6 +317,9 @@
   .client-vehicle .material-symbols-rounded{color:var(--accent);flex-shrink:0;}
   .client-vehicle p{margin:2px 0 0;font-size:12px;color:var(--text-mid);}
   .client-vehicle .chevron{margin-left:auto;color:var(--text-mid);}
+  .vehicle-edit-btn{flex-shrink:0;border:none;background:rgba(0,0,0,0.06);border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-mid);margin-left:8px;}
+  .vehicle-edit-btn .material-symbols-rounded{font-size:15px;}
+  .add-vehicle-btn{width:100%;border:1.5px dashed rgba(0,0,0,0.15);background:none;border-radius:14px;padding:10px;margin-top:8px;font-size:13px;font-weight:700;color:var(--accent-dark);display:flex;align-items:center;justify-content:center;gap:6px;cursor:pointer;font-family:inherit;}
 
   /* --- Modal de historial por vehículo --- */
   .modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:220;align-items:flex-end;justify-content:center;}
@@ -765,6 +768,26 @@
     <label class="form-label">Fecha de nacimiento</label>
     <input type="date" id="editClientBirthday" class="auth-input">
     <button class="btn-primary" id="editClientSaveBtn" onclick="saveClientEdits()"><span class="material-symbols-rounded">check_circle</span>Guardar cambios</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editVehicleModal" onclick="if(event.target===this) closeEditVehicle()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div><h2 id="editVehicleTitle">Vehículo</h2></div>
+      <button class="modal-close" onclick="closeEditVehicle()"><span class="material-symbols-rounded">close</span></button>
+    </div>
+    <label class="form-label">Marca</label>
+    <input type="text" id="editVehicleBrand" class="auth-input" placeholder="Toyota">
+    <label class="form-label">Modelo</label>
+    <input type="text" id="editVehicleModel" class="auth-input" placeholder="Corolla">
+    <label class="form-label">Año</label>
+    <input type="number" id="editVehicleYear" class="auth-input" placeholder="2019" inputmode="numeric">
+    <label class="form-label">Patente</label>
+    <input type="text" id="editVehiclePlate" class="auth-input" placeholder="AB123CD">
+    <label class="form-label">Kilometraje</label>
+    <input type="number" id="editVehicleKm" class="auth-input" placeholder="84200" inputmode="numeric">
+    <button class="btn-primary" id="editVehicleSaveBtn" onclick="saveVehicleEdits()"><span class="material-symbols-rounded">check_circle</span>Guardar vehículo</button>
   </div>
 </div>
 
@@ -1434,6 +1457,7 @@
         return '<div class="client-vehicle" data-vehicle-id="'+escapeHtml(v.id)+'" data-vehicle-label="'+escapeHtml(label)+'" data-owner-name="'+escapeHtml(client.name)+'">'+
           '<span class="material-symbols-rounded">directions_car</span>'+
           '<div><strong>'+escapeHtml(label)+'</strong><p>'+escapeHtml(v.plate||'')+' · '+(v.km||0)+' km</p></div>'+
+          '<button class="vehicle-edit-btn" data-vehicle-id="'+escapeHtml(v.id)+'" data-owner-id="'+escapeHtml(client.ownerId)+'" data-brand="'+escapeHtml(v.brand||'')+'" data-model="'+escapeHtml(v.model||'')+'" data-year="'+escapeHtml(v.year||'')+'" data-plate="'+escapeHtml(v.plate||'')+'" data-km="'+escapeHtml(v.km||0)+'"><span class="material-symbols-rounded">edit</span></button>'+
           '<span class="material-symbols-rounded chevron">chevron_right</span>'+
         '</div>';
       }).join('');
@@ -1444,6 +1468,7 @@
           '<button class="client-edit-btn" data-owner-id="'+escapeHtml(client.ownerId)+'" data-name="'+escapeHtml(client.name==='Cliente sin nombre'?'':client.name)+'" data-phone="'+escapeHtml(client.phone)+'" data-birthday="'+escapeHtml(client.birthday)+'"><span class="material-symbols-rounded">edit</span></button>'+
         '</div>'+
         vehiclesHtml+
+        '<button class="add-vehicle-btn" data-owner-id="'+escapeHtml(client.ownerId)+'"><span class="material-symbols-rounded">add</span>Agregar vehículo</button>'+
       '</div>';
     }).join('');
     list.querySelectorAll('.client-vehicle').forEach(el=>{
@@ -1454,6 +1479,15 @@
         e.stopPropagation();
         openEditClient(btn.dataset.ownerId, btn.dataset.name, btn.dataset.phone, btn.dataset.birthday);
       });
+    });
+    list.querySelectorAll('.vehicle-edit-btn').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        openEditVehicle(btn.dataset.vehicleId, btn.dataset.ownerId, btn.dataset.brand, btn.dataset.model, btn.dataset.year, btn.dataset.plate, btn.dataset.km);
+      });
+    });
+    list.querySelectorAll('.add-vehicle-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=> openEditVehicle(null, btn.dataset.ownerId, '', '', '', '', ''));
     });
   }
 
@@ -1538,6 +1572,54 @@
     }
     showToast('Cliente actualizado','check_circle');
     closeEditClient();
+    await loadWorkshopClients();
+  }
+
+  // --- Edición / alta de vehículos ---
+  let editingVehicleId = null;
+  let editingVehicleOwnerId = null;
+  function openEditVehicle(vehicleId, ownerId, brand, model, year, plate, km){
+    editingVehicleId = vehicleId || null;
+    editingVehicleOwnerId = ownerId;
+    document.getElementById('editVehicleTitle').textContent = vehicleId ? 'Editar vehículo' : 'Agregar vehículo';
+    document.getElementById('editVehicleBrand').value = brand || '';
+    document.getElementById('editVehicleModel').value = model || '';
+    document.getElementById('editVehicleYear').value = year || '';
+    document.getElementById('editVehiclePlate').value = plate || '';
+    document.getElementById('editVehicleKm').value = km || '';
+    document.getElementById('editVehicleModal').classList.add('show');
+  }
+  function closeEditVehicle(){
+    document.getElementById('editVehicleModal').classList.remove('show');
+    editingVehicleId = null;
+    editingVehicleOwnerId = null;
+  }
+  async function saveVehicleEdits(){
+    const btn = document.getElementById('editVehicleSaveBtn');
+    btn.disabled = true;
+    const payload = {
+      brand: document.getElementById('editVehicleBrand').value.trim() || null,
+      model: document.getElementById('editVehicleModel').value.trim() || null,
+      year: parseInt(document.getElementById('editVehicleYear').value, 10) || null,
+      plate: document.getElementById('editVehiclePlate').value.trim() || null,
+      km: parseInt(document.getElementById('editVehicleKm').value, 10) || 0
+    };
+    let error;
+    if(editingVehicleId){
+      ({ error } = await sb.from('vehicles').update(payload).eq('id', editingVehicleId));
+    } else {
+      payload.owner_id = editingVehicleOwnerId;
+      payload.workshop_id = currentProfile.workshop_id;
+      ({ error } = await sb.from('vehicles').insert(payload));
+    }
+    btn.disabled = false;
+    if(error){
+      console.error(error);
+      showToast('No se pudo guardar el vehículo','error');
+      return;
+    }
+    showToast(editingVehicleId ? 'Vehículo actualizado' : 'Vehículo agregado','check_circle');
+    closeEditVehicle();
     await loadWorkshopClients();
   }
 
