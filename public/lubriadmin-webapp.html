@@ -308,6 +308,9 @@
   .client-avatar{width:38px;height:38px;flex-shrink:0;border-radius:50%;background:linear-gradient(135deg,var(--accent),#5ac8fa);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;}
   .client-head strong{display:block;font-size:14px;}
   .client-head span{font-size:12px;color:var(--text-mid);}
+  .client-head > div:nth-child(2){flex:1;min-width:0;}
+  .client-edit-btn{flex-shrink:0;border:none;background:rgba(0,0,0,0.06);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text-mid);}
+  .client-edit-btn .material-symbols-rounded{font-size:17px;}
   .client-vehicle{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.5);border-radius:14px;padding:10px 12px;cursor:pointer;transition:background .15s;}
   .client-vehicle:hover{background:rgba(10,132,255,0.1);}
   .client-vehicle:not(:last-child){margin-bottom:8px;}
@@ -439,6 +442,7 @@
   .auth-card{width:100%;max-width:360px;background:var(--glass-bg-strong);backdrop-filter:blur(24px) saturate(180%);-webkit-backdrop-filter:blur(24px) saturate(180%);border:1px solid var(--glass-border);border-radius:var(--radius-lg);padding:28px 24px;box-shadow:0 20px 50px rgba(31,38,135,0.2);text-align:center;}
   .auth-logo{display:flex;align-items:center;justify-content:center;gap:8px;font-size:20px;font-weight:800;margin-bottom:18px;color:var(--text-dark);}
   .auth-input{width:100%;border:1px solid rgba(0,0,0,0.12);border-radius:14px;padding:12px 14px;font-size:14px;margin:14px 0;background:#fff;font-family:inherit;}
+  .form-label{display:block;font-size:12px;font-weight:700;color:var(--text-mid);margin:14px 0 -6px;}
   .auth-input:focus{outline:2px solid var(--accent);outline-offset:1px;}
 </style>
 </head>
@@ -745,6 +749,22 @@
     <div id="vhServiceList"><p class="hint">Cargando...</p></div>
     <div class="modal-section-title">Diagnósticos registrados</div>
     <div id="vhDiagnosticsList"><p class="hint">Cargando...</p></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editClientModal" onclick="if(event.target===this) closeEditClient()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div><h2>Editar cliente</h2></div>
+      <button class="modal-close" onclick="closeEditClient()"><span class="material-symbols-rounded">close</span></button>
+    </div>
+    <label class="form-label">Nombre completo</label>
+    <input type="text" id="editClientName" class="auth-input" placeholder="Nombre y apellido">
+    <label class="form-label">Teléfono (WhatsApp)</label>
+    <input type="tel" id="editClientPhone" class="auth-input" placeholder="+54 9 11 1234-5678" inputmode="tel">
+    <label class="form-label">Fecha de nacimiento</label>
+    <input type="date" id="editClientBirthday" class="auth-input">
+    <button class="btn-primary" id="editClientSaveBtn" onclick="saveClientEdits()"><span class="material-symbols-rounded">check_circle</span>Guardar cambios</button>
   </div>
 </div>
 
@@ -1380,7 +1400,7 @@
       return;
     }
     const { data, error } = await sb.from('vehicles')
-      .select('*, profiles(full_name)')
+      .select('*, profiles(full_name, phone, birthday)')
       .eq('workshop_id', currentProfile.workshop_id)
       .order('created_at', { ascending: false });
     if(error){
@@ -1398,7 +1418,13 @@
     }
     const byOwner = {};
     vehicles.forEach(v=>{
-      if(!byOwner[v.owner_id]) byOwner[v.owner_id] = { name: (v.profiles && v.profiles.full_name) || 'Cliente sin nombre', vehicles: [] };
+      if(!byOwner[v.owner_id]) byOwner[v.owner_id] = {
+        ownerId: v.owner_id,
+        name: (v.profiles && v.profiles.full_name) || 'Cliente sin nombre',
+        phone: (v.profiles && v.profiles.phone) || '',
+        birthday: (v.profiles && v.profiles.birthday) || '',
+        vehicles: []
+      };
       byOwner[v.owner_id].vehicles.push(v);
     });
     list.innerHTML = Object.values(byOwner).map(client=>{
@@ -1414,13 +1440,20 @@
       return '<div class="client-card">'+
         '<div class="client-head">'+
           '<div class="client-avatar">'+escapeHtml(initials||'--')+'</div>'+
-          '<div><strong>'+escapeHtml(client.name)+'</strong><span>'+client.vehicles.length+' vehículo(s)</span></div>'+
+          '<div><strong>'+escapeHtml(client.name)+'</strong><span>'+client.vehicles.length+' vehículo(s)'+(client.phone?' · '+escapeHtml(client.phone):'')+'</span></div>'+
+          '<button class="client-edit-btn" data-owner-id="'+escapeHtml(client.ownerId)+'" data-name="'+escapeHtml(client.name==='Cliente sin nombre'?'':client.name)+'" data-phone="'+escapeHtml(client.phone)+'" data-birthday="'+escapeHtml(client.birthday)+'"><span class="material-symbols-rounded">edit</span></button>'+
         '</div>'+
         vehiclesHtml+
       '</div>';
     }).join('');
     list.querySelectorAll('.client-vehicle').forEach(el=>{
       el.addEventListener('click', ()=> openVehicleHistory(el.dataset.vehicleId, el.dataset.vehicleLabel, el.dataset.ownerName));
+    });
+    list.querySelectorAll('.client-edit-btn').forEach(btn=>{
+      btn.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        openEditClient(btn.dataset.ownerId, btn.dataset.name, btn.dataset.phone, btn.dataset.birthday);
+      });
     });
   }
 
@@ -1446,7 +1479,7 @@
       serviceList.innerHTML = serviceRes.data.map(r=>
         '<div class="history-entry">'+
           '<span class="material-symbols-rounded" style="color:'+(r.on_time?'var(--green)':'var(--red)')+'">'+(r.on_time?'check_circle':'warning')+'</span>'+
-          '<div><time>'+new Date(r.performed_at).toLocaleDateString('es-AR')+'</time><p>'+r.description+'</p></div>'+
+          '<div><time>'+new Date(r.performed_at).toLocaleDateString('es-AR')+'</time><p>'+escapeHtml(r.description)+'</p></div>'+
         '</div>'
       ).join('');
     }
@@ -1463,13 +1496,49 @@
         const icon = d.severity==='urgente' ? 'error' : (d.severity==='atencion' ? 'warning' : 'check_circle');
         return '<div class="history-entry">'+
           '<span class="material-symbols-rounded" style="color:'+color+'">'+icon+'</span>'+
-          '<div><time>'+new Date(d.created_at).toLocaleDateString('es-AR')+' · DTC '+d.dtc_code+'</time><p>'+(d.human_explanation||d.label)+'</p></div>'+
+          '<div><time>'+new Date(d.created_at).toLocaleDateString('es-AR')+' · DTC '+escapeHtml(d.dtc_code)+'</time><p>'+escapeHtml(d.human_explanation||d.label)+'</p></div>'+
         '</div>';
       }).join('');
     }
   }
   function closeVehicleHistory(){
     document.getElementById('vehicleHistoryModal').classList.remove('show');
+  }
+
+  // --- Edición de cliente (nombre, teléfono, cumpleaños) ---
+  let editingClientId = null;
+  function openEditClient(ownerId, name, phone, birthday){
+    editingClientId = ownerId;
+    document.getElementById('editClientName').value = name || '';
+    document.getElementById('editClientPhone').value = phone || '';
+    document.getElementById('editClientBirthday').value = birthday || '';
+    document.getElementById('editClientModal').classList.add('show');
+  }
+  function closeEditClient(){
+    document.getElementById('editClientModal').classList.remove('show');
+    editingClientId = null;
+  }
+  async function saveClientEdits(){
+    if(!editingClientId) return;
+    const btn = document.getElementById('editClientSaveBtn');
+    btn.disabled = true;
+    const name = document.getElementById('editClientName').value.trim();
+    const phone = document.getElementById('editClientPhone').value.trim();
+    const birthday = document.getElementById('editClientBirthday').value || null;
+    const { error } = await sb.from('profiles').update({
+      full_name: name || null,
+      phone: phone || null,
+      birthday: birthday
+    }).eq('id', editingClientId);
+    btn.disabled = false;
+    if(error){
+      console.error(error);
+      showToast('No se pudo guardar los cambios','error');
+      return;
+    }
+    showToast('Cliente actualizado','check_circle');
+    closeEditClient();
+    await loadWorkshopClients();
   }
 
   // --- Certificado de Bienestar Vehicular (a partir de los diagnósticos reales) ---
