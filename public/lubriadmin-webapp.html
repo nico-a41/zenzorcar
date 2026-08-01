@@ -615,6 +615,7 @@
           <button class="seg-btn active" data-tab="panel" onclick="showTallerTab('panel')"><span class="material-symbols-rounded">dashboard</span>Panel técnico</button>
           <button class="seg-btn" data-tab="clientes" onclick="showTallerTab('clientes')"><span class="material-symbols-rounded">group</span>Clientes</button>
           <button class="seg-btn" data-tab="specs" onclick="showTallerTab('specs')"><span class="material-symbols-rounded">oil_barrel</span>Capacidades</button>
+          <button class="seg-btn" data-tab="stock" onclick="showTallerTab('stock')"><span class="material-symbols-rounded">inventory_2</span>Stock</button>
           <button class="seg-btn" data-tab="config" onclick="showTallerTab('config')"><span class="material-symbols-rounded">build</span>Configuración</button>
         </div>
 
@@ -630,6 +631,17 @@
           <input type="text" id="specsSearch" class="auth-input" placeholder="Buscar por marca o modelo..." oninput="filterSpecs()" style="margin-top:0;">
           <div id="specsList"><p class="hint">Cargando fichas técnicas...</p></div>
           <button class="add-vehicle-btn" onclick="openEditSpec(null)"><span class="material-symbols-rounded">add</span>Agregar ficha técnica</button>
+        </div>
+
+        <div class="taller-tab" id="tallerTab-stock">
+          <div class="glass-card scanner-summary">
+            <div class="scanner-row">
+              <div class="scanner-stat"><span class="material-symbols-rounded" style="color:var(--green)">check_circle</span><strong id="stockCountOk">0</strong><span>OK</span></div>
+              <div class="scanner-stat"><span class="material-symbols-rounded" style="color:var(--red)">error</span><strong id="stockCountLow">0</strong><span>Stock crítico</span></div>
+            </div>
+          </div>
+          <div id="stockList"><p class="hint">Cargando stock...</p></div>
+          <button class="add-vehicle-btn" onclick="openEditPart(null)"><span class="material-symbols-rounded">add</span>Agregar repuesto</button>
         </div>
 
         <div class="taller-tab" id="tallerTab-config">
@@ -831,6 +843,28 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="editPartModal" onclick="if(event.target===this) closeEditPart()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div><h2 id="editPartTitle">Repuesto</h2></div>
+      <button class="modal-close" onclick="closeEditPart()"><span class="material-symbols-rounded">close</span></button>
+    </div>
+    <label class="form-label">Nombre</label>
+    <input type="text" id="editPartName" class="auth-input" placeholder="Filtro de aceite W712">
+    <div class="form-row-2">
+      <div><label class="form-label">Código</label><input type="text" id="editPartCode" class="auth-input" placeholder="Opcional"></div>
+      <div><label class="form-label">Categoría</label><input type="text" id="editPartCategory" class="auth-input" placeholder="Filtros"></div>
+    </div>
+    <div class="form-row-2">
+      <div><label class="form-label">Stock actual</label><input type="number" id="editPartStock" class="auth-input" placeholder="0" inputmode="numeric"></div>
+      <div><label class="form-label">Alerta si baja de</label><input type="number" id="editPartMinAlert" class="auth-input" placeholder="1" inputmode="numeric"></div>
+    </div>
+    <label class="form-label">Unidad</label>
+    <input type="text" id="editPartUnit" class="auth-input" placeholder="unidad, litro, etc.">
+    <button class="btn-primary" id="editPartSaveBtn" onclick="savePartEdits()"><span class="material-symbols-rounded">check_circle</span>Guardar repuesto</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -924,7 +958,7 @@
 
     if(profile.role === 'taller'){
       showScreen('taller');
-      await Promise.all([loadWorkshopFaults(), loadWorkshopClients(), loadVehicleSpecs()]);
+      await Promise.all([loadWorkshopFaults(), loadWorkshopClients(), loadVehicleSpecs(), loadPartsInventory()]);
     } else {
       await ensureVehicle();
       renderVehicleHeader();
@@ -1765,6 +1799,100 @@
     showToast(editingSpecId ? 'Ficha actualizada' : 'Ficha agregada','check_circle');
     closeEditSpec();
     await loadVehicleSpecs();
+  }
+
+  // --- Stock de repuestos ---
+  let allPartsCache = [];
+  let editingPartId = null;
+  async function loadPartsInventory(){
+    const list = document.getElementById('stockList');
+    if(!currentProfile.workshop_id){
+      list.innerHTML = '<p class="hint">Tu cuenta todavía no está asignada a un taller.</p>';
+      return;
+    }
+    const { data, error } = await sb.from('parts_inventory').select('*').eq('workshop_id', currentProfile.workshop_id).order('name');
+    if(error){
+      console.error(error);
+      list.innerHTML = '<p class="hint">No se pudo cargar el stock.</p>';
+      return;
+    }
+    allPartsCache = data || [];
+    renderPartsInventory(allPartsCache);
+  }
+  function renderPartsInventory(parts){
+    const list = document.getElementById('stockList');
+    const low = parts.filter(p=>p.stock_quantity <= p.min_stock_alert);
+    document.getElementById('stockCountLow').textContent = low.length;
+    document.getElementById('stockCountOk').textContent = parts.length - low.length;
+    if(!parts.length){
+      list.innerHTML = '<p class="hint">No hay repuestos cargados todavía. Agregá el primero con el botón de abajo.</p>';
+      return;
+    }
+    const sorted = [...parts].sort((a,b)=> (a.stock_quantity<=a.min_stock_alert?0:1) - (b.stock_quantity<=b.min_stock_alert?0:1));
+    list.innerHTML = sorted.map(p=>{
+      const isLow = p.stock_quantity <= p.min_stock_alert;
+      const sub = [p.code, p.category].filter(Boolean).join(' · ') || 'Sin código/categoría';
+      return '<div class="client-card">'+
+        '<div class="fault-head">'+
+          '<div><strong>'+escapeHtml(p.name)+'</strong><p>'+escapeHtml(sub)+'</p></div>'+
+          '<span class="chip '+(isLow?'chip-red':'chip-green')+'">'+p.stock_quantity+' '+escapeHtml(p.unit)+(isLow?' · Crítico':'')+'</span>'+
+        '</div>'+
+        '<button class="btn-parts" data-part-id="'+escapeHtml(p.id)+'"><span class="material-symbols-rounded">edit</span>Editar stock</button>'+
+      '</div>';
+    }).join('');
+    list.querySelectorAll('.btn-parts').forEach(btn=>{
+      btn.addEventListener('click', ()=> openEditPart(btn.dataset.partId));
+    });
+  }
+  function openEditPart(partId){
+    editingPartId = partId || null;
+    const p = partId ? allPartsCache.find(x=>x.id===partId) : null;
+    document.getElementById('editPartTitle').textContent = p ? 'Editar repuesto' : 'Agregar repuesto';
+    document.getElementById('editPartName').value = p ? (p.name||'') : '';
+    document.getElementById('editPartCode').value = p ? (p.code||'') : '';
+    document.getElementById('editPartCategory').value = p ? (p.category||'') : '';
+    document.getElementById('editPartStock').value = p ? p.stock_quantity : '';
+    document.getElementById('editPartMinAlert').value = p ? p.min_stock_alert : '';
+    document.getElementById('editPartUnit').value = p ? (p.unit||'unidad') : 'unidad';
+    document.getElementById('editPartModal').classList.add('show');
+  }
+  function closeEditPart(){
+    document.getElementById('editPartModal').classList.remove('show');
+    editingPartId = null;
+  }
+  async function savePartEdits(){
+    const btn = document.getElementById('editPartSaveBtn');
+    btn.disabled = true;
+    const name = document.getElementById('editPartName').value.trim();
+    if(!name){
+      btn.disabled = false;
+      showToast('El nombre es obligatorio','error');
+      return;
+    }
+    const payload = {
+      name: name,
+      code: document.getElementById('editPartCode').value.trim() || null,
+      category: document.getElementById('editPartCategory').value.trim() || null,
+      stock_quantity: parseInt(document.getElementById('editPartStock').value, 10) || 0,
+      min_stock_alert: parseInt(document.getElementById('editPartMinAlert').value, 10) || 1,
+      unit: document.getElementById('editPartUnit').value.trim() || 'unidad'
+    };
+    let error;
+    if(editingPartId){
+      ({ error } = await sb.from('parts_inventory').update(payload).eq('id', editingPartId));
+    } else {
+      payload.workshop_id = currentProfile.workshop_id;
+      ({ error } = await sb.from('parts_inventory').insert(payload));
+    }
+    btn.disabled = false;
+    if(error){
+      console.error(error);
+      showToast('No se pudo guardar el repuesto','error');
+      return;
+    }
+    showToast(editingPartId ? 'Stock actualizado' : 'Repuesto agregado','check_circle');
+    closeEditPart();
+    await loadPartsInventory();
   }
 
   // --- Certificado de Bienestar Vehicular (a partir de los diagnósticos reales) ---
