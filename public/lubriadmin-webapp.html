@@ -496,7 +496,7 @@
             <p class="hero-label">Kilometraje proyectado por IA</p>
             <div class="hero-value">9.400 <span>km</span></div>
             <p class="hero-sub">Estimado para el <strong>2 de agosto</strong> según tu ritmo de uso</p>
-            <button class="btn-primary" onclick="showToast('Turno solicitado para el 2 de agosto','event_available')"><span class="material-symbols-rounded">calendar_month</span>Agendar turno</button>
+            <button class="btn-primary" onclick="openRequestAppointment()"><span class="material-symbols-rounded">calendar_month</span>Agendar turno</button>
           </div>
 
           <div class="glass-card health-card" onclick="toggleHealth()">
@@ -617,6 +617,7 @@
           <button class="seg-btn" data-tab="specs" onclick="showTallerTab('specs')"><span class="material-symbols-rounded">oil_barrel</span>Capacidades</button>
           <button class="seg-btn" data-tab="stock" onclick="showTallerTab('stock')"><span class="material-symbols-rounded">inventory_2</span>Stock</button>
           <button class="seg-btn" data-tab="servicios" onclick="showTallerTab('servicios')"><span class="material-symbols-rounded">receipt_long</span>Servicios</button>
+          <button class="seg-btn" data-tab="turnos" onclick="showTallerTab('turnos')"><span class="material-symbols-rounded">event</span>Turnos</button>
           <button class="seg-btn" data-tab="config" onclick="showTallerTab('config')"><span class="material-symbols-rounded">build</span>Configuración</button>
         </div>
 
@@ -648,6 +649,11 @@
         <div class="taller-tab" id="tallerTab-servicios">
           <div id="servicesList"><p class="hint">Cargando servicios...</p></div>
           <button class="add-vehicle-btn" onclick="openEditService(null)"><span class="material-symbols-rounded">add</span>Agregar servicio</button>
+        </div>
+
+        <div class="taller-tab" id="tallerTab-turnos">
+          <div id="appointmentsList"><p class="hint">Cargando turnos...</p></div>
+          <button class="add-vehicle-btn" onclick="openNewAppointment()"><span class="material-symbols-rounded">add</span>Agregar turno manual</button>
         </div>
 
         <div class="taller-tab" id="tallerTab-config">
@@ -889,6 +895,36 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="requestAppointmentModal" onclick="if(event.target===this) closeRequestAppointment()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div><h2>Agendar turno</h2></div>
+      <button class="modal-close" onclick="closeRequestAppointment()"><span class="material-symbols-rounded">close</span></button>
+    </div>
+    <label class="form-label">Fecha y hora preferida</label>
+    <input type="datetime-local" id="requestApptDate" class="auth-input">
+    <label class="form-label">¿Para qué necesitás el turno?</label>
+    <input type="text" id="requestApptDescription" class="auth-input" placeholder="Ej: cambio de aceite">
+    <button class="btn-primary" id="requestApptSaveBtn" onclick="submitAppointmentRequest()"><span class="material-symbols-rounded">event_available</span>Solicitar turno</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="editAppointmentModal" onclick="if(event.target===this) closeEditAppointment()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div><h2>Nuevo turno</h2></div>
+      <button class="modal-close" onclick="closeEditAppointment()"><span class="material-symbols-rounded">close</span></button>
+    </div>
+    <label class="form-label">Cliente / vehículo</label>
+    <select id="editApptVehicle" class="auth-input"></select>
+    <label class="form-label">Fecha y hora</label>
+    <input type="datetime-local" id="editApptDate" class="auth-input">
+    <label class="form-label">Servicio</label>
+    <input type="text" id="editApptDescription" class="auth-input" placeholder="Ej: cambio de aceite">
+    <button class="btn-primary" id="editApptSaveBtn" onclick="saveNewAppointment()"><span class="material-symbols-rounded">check_circle</span>Guardar turno</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -982,7 +1018,7 @@
 
     if(profile.role === 'taller'){
       showScreen('taller');
-      await Promise.all([loadWorkshopFaults(), loadWorkshopClients(), loadVehicleSpecs(), loadPartsInventory(), loadServiceCatalog()]);
+      await Promise.all([loadWorkshopFaults(), loadWorkshopClients(), loadVehicleSpecs(), loadPartsInventory(), loadServiceCatalog(), loadAppointments()]);
     } else {
       await ensureVehicle();
       renderVehicleHeader();
@@ -1529,7 +1565,8 @@
       list.innerHTML = '<p class="hint">No se pudieron cargar los clientes.</p>';
       return;
     }
-    renderWorkshopClients(data || []);
+    allWorkshopVehiclesCache = data || [];
+    renderWorkshopClients(allWorkshopVehiclesCache);
   }
   function renderWorkshopClients(vehicles){
     const list = document.getElementById('clientsList');
@@ -1722,6 +1759,7 @@
   }
 
   // --- Ficha técnica: capacidades de aceite y códigos de filtro ---
+  let allWorkshopVehiclesCache = [];
   let allSpecsCache = [];
   let editingSpecId = null;
   async function loadVehicleSpecs(){
@@ -2004,6 +2042,146 @@
     showToast(editingServiceId ? 'Servicio actualizado' : 'Servicio agregado','check_circle');
     closeEditService();
     await loadServiceCatalog();
+  }
+
+  // --- Agenda de turnos ---
+  function openRequestAppointment(){
+    document.getElementById('requestApptDate').value = '';
+    document.getElementById('requestApptDescription').value = '';
+    document.getElementById('requestAppointmentModal').classList.add('show');
+  }
+  function closeRequestAppointment(){
+    document.getElementById('requestAppointmentModal').classList.remove('show');
+  }
+  async function submitAppointmentRequest(){
+    const btn = document.getElementById('requestApptSaveBtn');
+    const dateVal = document.getElementById('requestApptDate').value;
+    if(!dateVal){ showToast('Elegí una fecha y hora','error'); return; }
+    if(!currentVehicle){ showToast('No se encontró tu vehículo','error'); return; }
+    if(!currentVehicle.workshop_id){ showToast('Tu vehículo todavía no está vinculado a un taller','error'); return; }
+    btn.disabled = true;
+    const { error } = await sb.from('appointments').insert({
+      workshop_id: currentVehicle.workshop_id,
+      vehicle_id: currentVehicle.id,
+      requested_by: currentUser.id,
+      scheduled_at: new Date(dateVal).toISOString(),
+      service_description: document.getElementById('requestApptDescription').value.trim() || null,
+      status: 'pending'
+    });
+    btn.disabled = false;
+    if(error){
+      console.error(error);
+      showToast('No se pudo solicitar el turno','error');
+      return;
+    }
+    showToast('Turno solicitado — el taller lo va a confirmar','event_available');
+    closeRequestAppointment();
+  }
+
+  async function loadAppointments(){
+    const list = document.getElementById('appointmentsList');
+    if(!currentProfile.workshop_id){
+      list.innerHTML = '<p class="hint">Tu cuenta todavía no está asignada a un taller.</p>';
+      return;
+    }
+    const { data, error } = await sb.from('appointments')
+      .select('*, vehicles(brand,model,year,plate,profiles(full_name))')
+      .eq('workshop_id', currentProfile.workshop_id)
+      .in('status', ['pending','confirmed'])
+      .order('scheduled_at', { ascending: true });
+    if(error){
+      console.error(error);
+      list.innerHTML = '<p class="hint">No se pudieron cargar los turnos.</p>';
+      return;
+    }
+    renderAppointments(data || []);
+  }
+  function renderAppointments(appts){
+    const list = document.getElementById('appointmentsList');
+    if(!appts.length){
+      list.innerHTML = '<p class="hint">No hay turnos pendientes o confirmados.</p>';
+      return;
+    }
+    list.innerHTML = appts.map(a=>{
+      const v = a.vehicles || {};
+      const ownerName = (v.profiles && v.profiles.full_name) || 'Cliente';
+      const label = (v.brand||'')+' '+(v.model||'')+" '"+String(v.year||'').slice(-2);
+      const dt = new Date(a.scheduled_at);
+      const dateLabel = dt.toLocaleDateString('es-AR')+' · '+dt.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+      const statusChip = a.status === 'confirmed' ? '<span class="chip chip-green">Confirmado</span>' : '<span class="chip chip-amber">Pendiente</span>';
+      const actionBtn = a.status==='pending'
+        ? '<button class="btn-secondary" data-appt-id="'+escapeHtml(a.id)+'" data-action="confirm"><span class="material-symbols-rounded">check_circle</span>Confirmar</button>'
+        : '<button class="btn-secondary" data-appt-id="'+escapeHtml(a.id)+'" data-action="complete"><span class="material-symbols-rounded">task_alt</span>Completar</button>';
+      return '<div class="client-card">'+
+        '<div class="fault-head">'+
+          '<div><strong>'+escapeHtml(dateLabel)+'</strong><p>'+escapeHtml(ownerName+' · '+label)+'</p></div>'+
+          statusChip+
+        '</div>'+
+        (a.service_description ? '<p class="hint">'+escapeHtml(a.service_description)+'</p>' : '')+
+        '<div class="demo-controls">'+
+          actionBtn+
+          '<button class="btn-secondary" data-appt-id="'+escapeHtml(a.id)+'" data-action="cancel"><span class="material-symbols-rounded">close</span>Cancelar</button>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+    list.querySelectorAll('[data-action]').forEach(btn=>{
+      btn.addEventListener('click', ()=> updateAppointmentStatus(btn.dataset.apptId, btn.dataset.action));
+    });
+  }
+  async function updateAppointmentStatus(id, action){
+    const statusMap = { confirm:'confirmed', complete:'completed', cancel:'cancelled' };
+    const { error } = await sb.from('appointments').update({ status: statusMap[action] }).eq('id', id);
+    if(error){
+      console.error(error);
+      showToast('No se pudo actualizar el turno','error');
+      return;
+    }
+    showToast('Turno actualizado','check_circle');
+    await loadAppointments();
+  }
+  function openNewAppointment(){
+    const select = document.getElementById('editApptVehicle');
+    if(!allWorkshopVehiclesCache.length){
+      showToast('Todavía no hay clientes con vehículos asignados','error');
+      return;
+    }
+    select.innerHTML = allWorkshopVehiclesCache.map(v=>{
+      const name = (v.profiles && v.profiles.full_name) || 'Cliente sin nombre';
+      const label = (v.brand||'')+' '+(v.model||'')+' · '+(v.plate||'');
+      return '<option value="'+escapeHtml(v.id)+'">'+escapeHtml(name+' — '+label)+'</option>';
+    }).join('');
+    document.getElementById('editApptDate').value = '';
+    document.getElementById('editApptDescription').value = '';
+    document.getElementById('editAppointmentModal').classList.add('show');
+  }
+  function closeEditAppointment(){
+    document.getElementById('editAppointmentModal').classList.remove('show');
+  }
+  async function saveNewAppointment(){
+    const btn = document.getElementById('editApptSaveBtn');
+    const vehicleId = document.getElementById('editApptVehicle').value;
+    const dateVal = document.getElementById('editApptDate').value;
+    if(!vehicleId || !dateVal){
+      showToast('Completá vehículo y fecha','error');
+      return;
+    }
+    btn.disabled = true;
+    const { error } = await sb.from('appointments').insert({
+      workshop_id: currentProfile.workshop_id,
+      vehicle_id: vehicleId,
+      scheduled_at: new Date(dateVal).toISOString(),
+      service_description: document.getElementById('editApptDescription').value.trim() || null,
+      status: 'confirmed'
+    });
+    btn.disabled = false;
+    if(error){
+      console.error(error);
+      showToast('No se pudo crear el turno','error');
+      return;
+    }
+    showToast('Turno agregado','check_circle');
+    closeEditAppointment();
+    await loadAppointments();
   }
 
   // --- Certificado de Bienestar Vehicular (a partir de los diagnósticos reales) ---
