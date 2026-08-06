@@ -287,7 +287,7 @@
   .dtc-human{margin:0;font-size:13px;color:var(--text-mid);line-height:1.5;}
 
   /* --- Taller (Héctor): panel técnico + configuración --- */
-  .segmented{display:inline-flex;max-width:100%;overflow-x:auto;background:rgba(0,0,0,0.06);border-radius:14px;padding:4px;margin-bottom:18px;gap:2px;}
+  .segmented{display:inline-flex;max-width:100%;overflow-x:auto;background:rgba(0,0,0,0.06);border-radius:14px;padding:4px;margin-bottom:18px;gap:2px;-webkit-mask-image:linear-gradient(to right, black calc(100% - 28px), transparent 100%);mask-image:linear-gradient(to right, black calc(100% - 28px), transparent 100%);}
   .seg-btn{border:none;background:none;padding:9px 14px;border-radius:10px;font-size:12px;font-weight:700;color:var(--text-mid);display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-family:inherit;white-space:nowrap;flex-shrink:0;}
   .seg-btn .material-symbols-rounded{font-size:18px;}
   .seg-btn.active{background:#fff;color:var(--text-dark);box-shadow:0 2px 6px rgba(0,0,0,0.12);}
@@ -616,6 +616,7 @@
           <button class="seg-btn" data-tab="clientes" onclick="showTallerTab('clientes')"><span class="material-symbols-rounded">group</span>Clientes</button>
           <button class="seg-btn" data-tab="specs" onclick="showTallerTab('specs')"><span class="material-symbols-rounded">oil_barrel</span>Capacidades</button>
           <button class="seg-btn" data-tab="stock" onclick="showTallerTab('stock')"><span class="material-symbols-rounded">inventory_2</span>Stock</button>
+          <button class="seg-btn" data-tab="servicios" onclick="showTallerTab('servicios')"><span class="material-symbols-rounded">receipt_long</span>Servicios</button>
           <button class="seg-btn" data-tab="config" onclick="showTallerTab('config')"><span class="material-symbols-rounded">build</span>Configuración</button>
         </div>
 
@@ -642,6 +643,11 @@
           </div>
           <div id="stockList"><p class="hint">Cargando stock...</p></div>
           <button class="add-vehicle-btn" onclick="openEditPart(null)"><span class="material-symbols-rounded">add</span>Agregar repuesto</button>
+        </div>
+
+        <div class="taller-tab" id="tallerTab-servicios">
+          <div id="servicesList"><p class="hint">Cargando servicios...</p></div>
+          <button class="add-vehicle-btn" onclick="openEditService(null)"><span class="material-symbols-rounded">add</span>Agregar servicio</button>
         </div>
 
         <div class="taller-tab" id="tallerTab-config">
@@ -865,6 +871,24 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="editServiceModal" onclick="if(event.target===this) closeEditService()">
+  <div class="modal-card">
+    <div class="modal-head">
+      <div><h2 id="editServiceTitle">Servicio</h2></div>
+      <button class="modal-close" onclick="closeEditService()"><span class="material-symbols-rounded">close</span></button>
+    </div>
+    <label class="form-label">Nombre</label>
+    <input type="text" id="editServiceName" class="auth-input" placeholder="Cambio de aceite y filtro">
+    <label class="form-label">Descripción</label>
+    <input type="text" id="editServiceDescription" class="auth-input" placeholder="Opcional">
+    <div class="form-row-2">
+      <div><label class="form-label">Precio</label><input type="number" step="0.01" id="editServicePrice" class="auth-input" placeholder="25000" inputmode="decimal"></div>
+      <div><label class="form-label">Duración (min)</label><input type="number" id="editServiceMinutes" class="auth-input" placeholder="30" inputmode="numeric"></div>
+    </div>
+    <button class="btn-primary" id="editServiceSaveBtn" onclick="saveServiceEdits()"><span class="material-symbols-rounded">check_circle</span>Guardar servicio</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -958,7 +982,7 @@
 
     if(profile.role === 'taller'){
       showScreen('taller');
-      await Promise.all([loadWorkshopFaults(), loadWorkshopClients(), loadVehicleSpecs(), loadPartsInventory()]);
+      await Promise.all([loadWorkshopFaults(), loadWorkshopClients(), loadVehicleSpecs(), loadPartsInventory(), loadServiceCatalog()]);
     } else {
       await ensureVehicle();
       renderVehicleHeader();
@@ -1893,6 +1917,93 @@
     showToast(editingPartId ? 'Stock actualizado' : 'Repuesto agregado','check_circle');
     closeEditPart();
     await loadPartsInventory();
+  }
+
+  // --- Catálogo de servicios pre-programados ---
+  let allServicesCache = [];
+  let editingServiceId = null;
+  async function loadServiceCatalog(){
+    const list = document.getElementById('servicesList');
+    if(!currentProfile.workshop_id){
+      list.innerHTML = '<p class="hint">Tu cuenta todavía no está asignada a un taller.</p>';
+      return;
+    }
+    const { data, error } = await sb.from('service_catalog').select('*').eq('workshop_id', currentProfile.workshop_id).order('name');
+    if(error){
+      console.error(error);
+      list.innerHTML = '<p class="hint">No se pudo cargar el catálogo de servicios.</p>';
+      return;
+    }
+    allServicesCache = data || [];
+    renderServiceCatalog(allServicesCache);
+  }
+  function renderServiceCatalog(services){
+    const list = document.getElementById('servicesList');
+    if(!services.length){
+      list.innerHTML = '<p class="hint">No hay servicios pre-programados todavía. Agregá el primero con el botón de abajo.</p>';
+      return;
+    }
+    list.innerHTML = services.map(s=>{
+      const priceLabel = '$'+Number(s.price||0).toLocaleString('es-AR');
+      const sub = s.estimated_minutes ? s.estimated_minutes+' min' : (s.description || '');
+      return '<div class="client-card">'+
+        '<div class="fault-head">'+
+          '<div><strong>'+escapeHtml(s.name)+'</strong><p>'+escapeHtml(sub)+'</p></div>'+
+          '<span class="chip chip-green">'+escapeHtml(priceLabel)+'</span>'+
+        '</div>'+
+        (s.description && s.estimated_minutes ? '<p class="hint">'+escapeHtml(s.description)+'</p>' : '')+
+        '<button class="btn-parts" data-service-id="'+escapeHtml(s.id)+'"><span class="material-symbols-rounded">edit</span>Editar servicio</button>'+
+      '</div>';
+    }).join('');
+    list.querySelectorAll('.btn-parts').forEach(btn=>{
+      btn.addEventListener('click', ()=> openEditService(btn.dataset.serviceId));
+    });
+  }
+  function openEditService(serviceId){
+    editingServiceId = serviceId || null;
+    const s = serviceId ? allServicesCache.find(x=>x.id===serviceId) : null;
+    document.getElementById('editServiceTitle').textContent = s ? 'Editar servicio' : 'Agregar servicio';
+    document.getElementById('editServiceName').value = s ? (s.name||'') : '';
+    document.getElementById('editServiceDescription').value = s ? (s.description||'') : '';
+    document.getElementById('editServicePrice').value = s ? s.price : '';
+    document.getElementById('editServiceMinutes').value = s ? (s.estimated_minutes||'') : '';
+    document.getElementById('editServiceModal').classList.add('show');
+  }
+  function closeEditService(){
+    document.getElementById('editServiceModal').classList.remove('show');
+    editingServiceId = null;
+  }
+  async function saveServiceEdits(){
+    const btn = document.getElementById('editServiceSaveBtn');
+    btn.disabled = true;
+    const name = document.getElementById('editServiceName').value.trim();
+    if(!name){
+      btn.disabled = false;
+      showToast('El nombre es obligatorio','error');
+      return;
+    }
+    const payload = {
+      name: name,
+      description: document.getElementById('editServiceDescription').value.trim() || null,
+      price: parseFloat(document.getElementById('editServicePrice').value) || 0,
+      estimated_minutes: parseInt(document.getElementById('editServiceMinutes').value, 10) || null
+    };
+    let error;
+    if(editingServiceId){
+      ({ error } = await sb.from('service_catalog').update(payload).eq('id', editingServiceId));
+    } else {
+      payload.workshop_id = currentProfile.workshop_id;
+      ({ error } = await sb.from('service_catalog').insert(payload));
+    }
+    btn.disabled = false;
+    if(error){
+      console.error(error);
+      showToast('No se pudo guardar el servicio','error');
+      return;
+    }
+    showToast(editingServiceId ? 'Servicio actualizado' : 'Servicio agregado','check_circle');
+    closeEditService();
+    await loadServiceCatalog();
   }
 
   // --- Certificado de Bienestar Vehicular (a partir de los diagnósticos reales) ---
